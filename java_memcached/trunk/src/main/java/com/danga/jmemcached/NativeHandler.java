@@ -20,7 +20,9 @@
 package com.danga.jmemcached;
 
 import java.util.Date;
-import org.apache.log4j.Logger;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * Handle encoding standard Java types directly which can result in significant
@@ -89,10 +91,8 @@ import org.apache.log4j.Logger;
  * @author Greg Whalin <greg@meetup.com> 
  */
 public class NativeHandler {
-
 	// logger
-	private static Logger log =
-		Logger.getLogger( NativeHandler.class.getName() );
+	private static Log log = LogFactory.getLog(NativeHandler.class);
 
 	/** 
 	 * Detemine of object can be natively serialized by this class. 

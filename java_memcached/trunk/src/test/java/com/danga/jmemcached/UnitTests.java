@@ -18,22 +18,20 @@
  * @author greg whalin <greg@meetup.com> 
  * @version 1.2
  */
-package com.danga.jmemcached.test;
+package com.danga.jmemcached;
 
-import com.danga.jmemcached.*;
-
-import java.util.*;
 import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Map;
+import java.util.logging.Level;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.BasicConfigurator;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class UnitTests {
-	
 	// logger
-	private static Logger log =
-		Logger.getLogger( UnitTests.class.getName() );
+	private static Log log = LogFactory.getLog(UnitTests.class);
 
     public static MemCachedClient mc  = null;
 
@@ -330,9 +328,9 @@ public class UnitTests {
 	 * @param args the command line arguments
 	 */
 	public static void main(String[] args) {
-
-		BasicConfigurator.configure();
-		org.apache.log4j.Logger.getRootLogger().setLevel( Level.WARN );
+// FIXME
+//		BasicConfigurator.configure();
+//		org.apache.log4j.Logger.getRootLogger().setLevel( Level.WARN );
 
 		if ( !UnitTests.class.desiredAssertionStatus() ) {
 			System.err.println( "WARNING: assertions are disabled!" );

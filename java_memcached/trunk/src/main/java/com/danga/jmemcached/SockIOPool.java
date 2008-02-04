@@ -19,30 +19,33 @@
  */
 package com.danga.jmemcached;
 
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.nio.channels.SocketChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-
-// java.util
-import java.util.Map;
-import java.util.List;
-import java.util.Set;
-import java.util.Iterator;
 import java.util.ArrayList;
-import java.util.IdentityHashMap;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Date;
-import java.util.Arrays;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-
-import java.util.zip.*;
-import java.net.*;
-import java.io.*;
-import java.nio.*;
-import java.nio.channels.*;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.log4j.Logger;
+import java.util.zip.CRC32;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /** 
  * This class is a connection pool for maintaning a pool of persistent connections<br/>
@@ -127,10 +130,8 @@ import org.apache.log4j.Logger;
  * @version 1.5
  */
 public class SockIOPool {
-
 	// logger
-	private static Logger log =
-		Logger.getLogger( SockIOPool.class.getName() );
+	private static Log log = LogFactory.getLog(SockIOPool.class);
 
 	// store instances of pools
 	private static Map<String,SockIOPool> pools =
@@ -1426,10 +1427,8 @@ public class SockIOPool {
 	 * @version 1.5
 	 */
 	protected static class MaintThread extends Thread {
-
 		// logger
-		private static Logger log =
-			Logger.getLogger( MaintThread.class.getName() );
+		private static Log log = LogFactory.getLog(MaintThread.class);
 
 		private SockIOPool pool;
 		private long interval      = 1000 * 3; // every 3 seconds
@@ -1491,10 +1490,8 @@ public class SockIOPool {
 	 * @version 1.5
 	 */
 	public static class SockIO implements LineInputStream {
-
 		// logger
-		private static Logger log =
-			Logger.getLogger( SockIO.class.getName() );
+		private static Log log = LogFactory.getLog(SockIO.class);
 
 		// pool
 		private SockIOPool pool;

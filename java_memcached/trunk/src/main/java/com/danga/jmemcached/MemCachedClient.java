@@ -19,17 +19,28 @@
  */
 package com.danga.jmemcached;
 
-import java.util.*;
-import java.util.zip.*;
-import java.nio.*;          
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
-import java.nio.charset.*;  
-import java.nio.channels.*;
-import java.nio.channels.spi.*;
-import java.io.*;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
-import org.apache.log4j.Logger;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * This is a Java client for the memcached server available from
@@ -159,8 +170,7 @@ import org.apache.log4j.Logger;
 public class MemCachedClient {
 
 	// logger
-	private static Logger log =
-		Logger.getLogger( MemCachedClient.class.getName() );
+	private static Log log = LogFactory.getLog(MemCachedClient.class);
 
 	// return codes
 	private static final String VALUE        = "VALUE";			// start of value line from server

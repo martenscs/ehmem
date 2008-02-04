@@ -17,17 +17,13 @@
  * @author greg whalin <greg@meetup.com> 
  * @version 1.5.2
  */
-package com.danga.jmemcached.test;
-
-import com.danga.jmemcached.*;
-
-import org.apache.log4j.*;
+package com.danga.jmemcached;
 
 public class TestMemcached  {  
 	public static void main(String[] args) {
 		      // memcached should be running on port 11211 but NOT on 11212
-
-		BasicConfigurator.configure();
+// FIXME
+//		BasicConfigurator.configure();
 		String[] servers = { "192.168.1.1:1624", "192.168.1.1:1625" };
 		SockIOPool pool = SockIOPool.getInstance();
 		pool.setServers( servers );
@@ -44,7 +40,8 @@ public class TestMemcached  {
 		MemCachedClient memCachedClient = new MemCachedClient();
 
 		// turn off most memcached client logging:
-		com.danga.jmemcached.Logger.getLogger( MemCachedClient.class.getName() ).setLevel( com.danga.jmemcached.Logger.LEVEL_WARN );
+// FIXME
+//		com.danga.jmemcached.Logger.getLogger( MemCachedClient.class.getName() ).setLevel( com.danga.jmemcached.Logger.LEVEL_WARN );
 
 		for ( int i = 0; i < 10; i++ ) {
 			boolean success = memCachedClient.set( "" + i, "Hello!" );

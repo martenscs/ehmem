@@ -17,7 +17,7 @@
  * @author Greg Whalin <greg@meetup.com> 
  * @version 1.5.2
  */
-package com.danga.jmemcached.test;
+package com.danga.jmemcached;
 
 import com.danga.jmemcached.*;
 
