@@ -17,9 +17,10 @@
  * @author greg whalin <greg@meetup.com> 
  * @version 1.5.2
  */
-package com.danga.MemCached.test;
+package com.danga.jmemcached.test;
 
-import com.danga.MemCached.*;
+import com.danga.jmemcached.*;
+
 import org.apache.log4j.*;
 
 public class TestMemcached  {  
@@ -43,7 +44,7 @@ public class TestMemcached  {
 		MemCachedClient memCachedClient = new MemCachedClient();
 
 		// turn off most memcached client logging:
-		com.danga.MemCached.Logger.getLogger( MemCachedClient.class.getName() ).setLevel( com.danga.MemCached.Logger.LEVEL_WARN );
+		com.danga.jmemcached.Logger.getLogger( MemCachedClient.class.getName() ).setLevel( com.danga.jmemcached.Logger.LEVEL_WARN );
 
 		for ( int i = 0; i < 10; i++ ) {
 			boolean success = memCachedClient.set( "" + i, "Hello!" );

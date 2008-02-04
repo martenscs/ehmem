@@ -18,9 +18,10 @@
  * @author greg whalin <greg@meetup.com> 
  * @version 1.2
  */
-package com.danga.MemCached.test;
+package com.danga.jmemcached.test;
 
-import com.danga.MemCached.*;
+import com.danga.jmemcached.*;
+
 import java.util.*;
 import java.io.Serializable;
 

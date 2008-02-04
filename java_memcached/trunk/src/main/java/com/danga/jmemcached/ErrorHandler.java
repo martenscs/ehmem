@@ -21,7 +21,7 @@
  * @author Dan Zivkovic <zivkovic@apple.com>
  * @version 2.0
  */
-package com.danga.MemCached;
+package com.danga.jmemcached;
 
 public interface ErrorHandler {
 

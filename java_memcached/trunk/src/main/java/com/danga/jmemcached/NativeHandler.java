@@ -17,7 +17,7 @@
  * @author Greg Whalin <greg@meetup.com> 
  * @version 2.0
  */
-package com.danga.MemCached;
+package com.danga.jmemcached;
 
 import java.util.Date;
 import org.apache.log4j.Logger;

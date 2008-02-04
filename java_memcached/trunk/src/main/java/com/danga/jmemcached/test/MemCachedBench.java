@@ -17,9 +17,10 @@
  * @author Greg Whalin <greg@meetup.com> 
  * @version 1.5.2
  */
-package com.danga.MemCached.test;
+package com.danga.jmemcached.test;
 
-import com.danga.MemCached.*;
+import com.danga.jmemcached.*;
+
 import java.util.*;
 
 public class MemCachedBench {
