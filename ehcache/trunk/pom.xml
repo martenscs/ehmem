@@ -13,8 +13,8 @@
     <inceptionYear>2003</inceptionYear>
 
     <modules>
-        <module>core</module>
-        <module>debugger</module>
+        <!-- module>core</module -->
+        <!-- module>debugger</module -->
         <!-- module>site</module -->
         <!--<module>distribution</module>-->
     </modules>
@@ -430,7 +430,7 @@
 
 
     <distributionManagement>
-        <!--  
+        <!--
           The server id here defined must also appear in ~/.m2/settings.xml with username
         -->
         <repository>
