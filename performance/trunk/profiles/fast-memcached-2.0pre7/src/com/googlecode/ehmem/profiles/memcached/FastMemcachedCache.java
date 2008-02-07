@@ -81,6 +81,8 @@ public class FastMemcachedCache extends CacheAdapter {
      */
     @Override
     public CacheStatistics getCacheStatistics() {
+        System.out.println(client.getStats());
+
         return statistics;
     }
 

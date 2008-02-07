@@ -88,12 +88,13 @@ public class MemcachedCache extends CacheAdapter {
         return client.add(key.toString(), value);
     }
 
-
     /* (non-Javadoc)
      * @see com.googlecode.ehmem.performance.jsr107.CacheAdapter#getCacheStatistics()
      */
     @Override
     public CacheStatistics getCacheStatistics() {
+        System.out.println(client.stats().toString());
+
         return statistics;
     }
 
