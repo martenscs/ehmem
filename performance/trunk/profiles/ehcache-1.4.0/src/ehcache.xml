@@ -1,0 +1,30 @@
+<ehcache>
+    <diskStore path="java.io.tmpdir"/>
+
+
+    <defaultCache
+            maxElementsInMemory="10000"
+            eternal="false"
+            overflowToDisk="false"
+            timeToIdleSeconds="120"
+            timeToLiveSeconds="120"
+            diskPersistent="false"
+            diskExpiryThreadIntervalSeconds="120"/>
+
+
+    <cache name="com.googlecode.ehmem.performance.object.FirstTestObject"
+           maxElementsInMemory="10000"
+           eternal="true"
+           overflowToDisk="false"/>
+
+    <cache name="com.googlecode.ehmem.performance.object.SecondTestObject"
+           maxElementsInMemory="10000"
+           eternal="true"
+           overflowToDisk="false"/>
+
+    <cache name="com.googlecode.ehmem.performance.object.ThirdTestObject"
+           maxElementsInMemory="10000"
+           eternal="true"
+           overflowToDisk="false"/>
+
+</ehcache>
