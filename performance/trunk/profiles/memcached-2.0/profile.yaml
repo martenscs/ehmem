@@ -1,0 +1,13 @@
+--- !com.googlecode.ehmem.performance.profile.ProfileConfiguration
+name: memcached remote cache
+
+caches: !java.util.ArrayList
+  - !com.googlecode.ehmem.performance.profile.CacheConfiguration
+    name: com.googlecode.ehmem.performance.object.FirstTestObject
+    clazz: com.googlecode.ehmem.profiles.memcached.MemcachedCache
+  - !com.googlecode.ehmem.performance.profile.CacheConfiguration
+    name: com.googlecode.ehmem.performance.object.SecondTestObject
+    clazz: com.googlecode.ehmem.profiles.memcached.MemcachedCache
+  - !com.googlecode.ehmem.performance.profile.CacheConfiguration
+    name: com.googlecode.ehmem.performance.object.ThirdTestObject
+    clazz: com.googlecode.ehmem.profiles.memcached.MemcachedCache
