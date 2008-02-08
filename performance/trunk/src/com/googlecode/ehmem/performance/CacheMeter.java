@@ -111,6 +111,8 @@ public class CacheMeter {
             meter.stop();
         }
 
+        System.out.println("Number of objects: " + RuntimeStatistics.getNumberOfObjects());
+
         final CacheReport cacheReport = new CacheReport();
 
         for (CacheConfiguration c : config.getCaches()) {

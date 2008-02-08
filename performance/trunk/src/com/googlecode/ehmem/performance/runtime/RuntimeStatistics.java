@@ -2,6 +2,7 @@ package com.googlecode.ehmem.performance.runtime;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author <A href="mailto:abashev at gmail dot com">Alexey Abashev</A>
@@ -12,6 +13,8 @@ public class RuntimeStatistics {
 
     private static List<MemoryTimestamp> memoryTimestamps = new ArrayList<MemoryTimestamp>();
     private static List<CPUTimestamp> cpuTimestamps = new ArrayList<CPUTimestamp>();
+
+    private static AtomicLong numberOfObjects = new AtomicLong();
 
     public static void memoryTimestamp() {
         synchronized (memoryTimestamps) {
@@ -43,5 +46,13 @@ public class RuntimeStatistics {
 
     public static List<CPUTimestamp> getCPUTimestamps() {
         return cpuTimestamps;
+    }
+
+    public static void incrementNumberOfObjects() {
+        numberOfObjects.incrementAndGet();
+    }
+
+    public static long getNumberOfObjects() {
+        return numberOfObjects.longValue();
     }
 }

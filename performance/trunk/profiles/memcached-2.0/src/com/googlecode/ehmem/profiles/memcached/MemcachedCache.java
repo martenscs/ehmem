@@ -1,6 +1,7 @@
 package com.googlecode.ehmem.profiles.memcached;
 
-import org.apache.commons.logging.LogFactory;
+import java.util.HashMap;
+import java.util.Map;
 
 import net.sf.jsr107cache.CacheStatistics;
 
@@ -22,14 +23,14 @@ public class MemcachedCache extends CacheAdapter {
 
     // set up connection pool once at class load
     static {
-
         // server list and weights
         String[] servers = {
+                "127.0.0.1:11212",
                 "192.168.0.1:11211",
                 "127.0.0.1:11211"
         };
 
-        Integer[] weights = {1, 1};
+        Integer[] weights = {1, 1, 1};
 
         // grab an instance of our connection pool
         pool = SockIOPool.getInstance();
@@ -93,7 +94,17 @@ public class MemcachedCache extends CacheAdapter {
      */
     @Override
     public CacheStatistics getCacheStatistics() {
-        System.out.println(client.stats().toString());
+//        Map<String, Map<String, String>> stats = new HashMap<String, Map<String,String>>(client.stats());
+
+        client.stats().entrySet().toString();
+//
+//        for (Entry<String, Map<String, String>> entry : stats.entrySet()) {
+//            System.out.println(entry.getKey());
+//
+////            for (Entry<String, String> param : entry.getValue().entrySet()) {
+////                System.out.println(" - " + param.getKey() + " = " + param.getValue());
+////            }
+//        }
 
         return statistics;
     }

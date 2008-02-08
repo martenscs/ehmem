@@ -27,6 +27,7 @@ public class FastMemcachedCache extends CacheAdapter {
         try {
             client = new MemcachedClient(
                     Arrays.asList(
+                            new InetSocketAddress("127.0.0.1", 11212),
                             new InetSocketAddress("192.168.0.1", 11211),
                             new InetSocketAddress("127.0.0.1", 11211)
                     )

@@ -4,6 +4,7 @@ import java.util.Random;
 
 import com.googlecode.ehmem.performance.object.Keyed;
 import com.googlecode.ehmem.performance.object.ObjectFactory;
+import com.googlecode.ehmem.performance.runtime.RuntimeStatistics;
 
 import net.sf.jsr107cache.Cache;
 import net.sf.jsr107cache.CacheManager;
@@ -29,6 +30,8 @@ public class CacheProducer implements Runnable  {
                 Thread.sleep((long) (random.nextFloat() * 10));
 
                 Keyed element = ObjectFactory.create(cacheName);
+
+                RuntimeStatistics.incrementNumberOfObjects();
 
                 cache.put(element.getKey(), element);
             }
