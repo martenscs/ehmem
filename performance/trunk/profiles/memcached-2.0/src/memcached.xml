@@ -1,0 +1,22 @@
+<memcached>
+	<pool name="default">
+		<servers>
+			<server host="127.0.0.1:11212" weight="1"/>
+			<server host="192.168.0.1:11211" weight="1"/>
+			<server host="127.0.0.1:11211" weight="1"/>
+		</servers>
+
+		<parameters>
+			<parameter name="initConnections" value="5"/>
+			<parameter name="minConnections" value="5"/>
+			<parameter name="maxConnections" value="250"/>
+			<parameter name="maxIdle" value="21600000"/>
+
+			<parameter name="maintSleep" value="30"/>
+
+			<parameter name="nagle" value="false"/>
+			<parameter name="socketTO" value="3000"/>
+			<parameter name="socketConnectTO" value="0"/>
+		</parameters>
+	</pool>
+</memcached>
