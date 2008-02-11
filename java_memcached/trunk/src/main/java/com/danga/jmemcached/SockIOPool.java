@@ -14,7 +14,7 @@
  * You should have received a copy of the BSD License along with this
  * library.
  *
- * @author greg whalin <greg@meetup.com> 
+ * @author greg whalin <greg@meetup.com>
  * @version 2.0
  */
 package com.danga.jmemcached;
@@ -23,6 +23,7 @@ import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -44,10 +45,16 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
-/** 
+/**
  * This class is a connection pool for maintaning a pool of persistent connections<br/>
  * to memcached servers.
  *
@@ -62,41 +69,41 @@ import org.apache.commons.logging.LogFactory;
  *
  *		SockIOPool pool = SockIOPool.getInstance();
  *		pool.setServers(serverlist);
- *		pool.initialize();	
+ *		pool.initialize();
  *	}
- * </pre> 
+ * </pre>
  * <h3>An example of initializing using defaults and providing weights for servers:</h3>
  *  <pre>
  *	static {
  *		String[] serverlist = { "cache0.server.com:12345", "cache1.server.com:12345" };
  *		Integer[] weights   = { new Integer(5), new Integer(2) };
- *		
+ *
  *		SockIOPool pool = SockIOPool.getInstance();
  *		pool.setServers(serverlist);
- *		pool.setWeights(weights);	
- *		pool.initialize();	
+ *		pool.setWeights(weights);
+ *		pool.initialize();
  *	}
- *  </pre> 
+ *  </pre>
  * <h3>An example of initializing overriding defaults:</h3>
  *  <pre>
  *	static {
  *		String[] serverlist     = { "cache0.server.com:12345", "cache1.server.com:12345" };
- *		Integer[] weights       = { new Integer(5), new Integer(2) };	
+ *		Integer[] weights       = { new Integer(5), new Integer(2) };
  *		int initialConnections  = 10;
  *		int minSpareConnections = 5;
- *		int maxSpareConnections = 50;	
+ *		int maxSpareConnections = 50;
  *		long maxIdleTime        = 1000 * 60 * 30;	// 30 minutes
  *		long maxBusyTime        = 1000 * 60 * 5;	// 5 minutes
  *		long maintThreadSleep   = 1000 * 5;			// 5 seconds
  *		int	socketTimeOut       = 1000 * 3;			// 3 seconds to block on reads
  *		int	socketConnectTO     = 1000 * 3;			// 3 seconds to block on initial connections.  If 0, then will use blocking connect (default)
- *		boolean failover        = false;			// turn off auto-failover in event of server down	
- *		boolean nagleAlg        = false;			// turn off Nagle's algorithm on all sockets in pool	
+ *		boolean failover        = false;			// turn off auto-failover in event of server down
+ *		boolean nagleAlg        = false;			// turn off Nagle's algorithm on all sockets in pool
  *		boolean aliveCheck      = false;			// disable health check of socket on checkout
  *
  *		SockIOPool pool = SockIOPool.getInstance();
  *		pool.setServers( serverlist );
- *		pool.setWeights( weights );	
+ *		pool.setWeights( weights );
  *		pool.setInitConn( initialConnections );
  *		pool.setMinConn( minSpareConnections );
  *		pool.setMaxConn( maxSpareConnections );
@@ -104,29 +111,29 @@ import org.apache.commons.logging.LogFactory;
  *		pool.setMaxBusyTime( maxBusyTime );
  *		pool.setMaintSleep( maintThreadSleep );
  *		pool.setSocketTO( socketTimeOut );
- *		pool.setNagle( nagleAlg );	
+ *		pool.setNagle( nagleAlg );
  *		pool.setHashingAlg( SockIOPool.NEW_COMPAT_HASH );
  *		pool.setAliveCheck( true );
- *		pool.initialize();	
+ *		pool.initialize();
  *	}
- *  </pre> 
- * The easiest manner in which to initialize the pool is to set the servers and rely on defaults as in the first example.<br/> 
+ *  </pre>
+ * The easiest manner in which to initialize the pool is to set the servers and rely on defaults as in the first example.<br/>
  * After pool is initialized, a client will request a SockIO object by calling getSock with the cache key<br/>
- * The client must always close the SockIO object when finished, which will return the connection back to the pool.<br/> 
+ * The client must always close the SockIO object when finished, which will return the connection back to the pool.<br/>
  * <h3>An example of retrieving a SockIO object:</h3>
  * <pre>
  *		SockIOPool.SockIO sock = SockIOPool.getInstance().getSock( key );
  *		try {
- *			sock.write( "version\r\n" );	
- *			sock.flush();	
- *			System.out.println( "Version: " + sock.readLine() );	
+ *			sock.write( "version\r\n" );
+ *			sock.flush();
+ *			System.out.println( "Version: " + sock.readLine() );
  *		}
- *		catch (IOException ioe) { System.out.println( "io exception thrown" ) };	
+ *		catch (IOException ioe) { System.out.println( "io exception thrown" ) };
  *
- *		sock.close();	
- * </pre> 
+ *		sock.close();
+ * </pre>
  *
- * @author greg whalin <greg@whalin.com> 
+ * @author greg whalin <greg@whalin.com>
  * @version 1.5
  */
 public class SockIOPool {
@@ -134,8 +141,7 @@ public class SockIOPool {
 	private static Log log = LogFactory.getLog(SockIOPool.class);
 
 	// store instances of pools
-	private static Map<String,SockIOPool> pools =
-		new HashMap<String,SockIOPool>();
+	private static Map<String,SockIOPool> pools = new HashMap<String,SockIOPool>();
 
 	// avoid recurring construction
 	private static ThreadLocal<MessageDigest> MD5 = new ThreadLocal<MessageDigest>() {
@@ -146,7 +152,7 @@ public class SockIOPool {
 			}
 			catch ( NoSuchAlgorithmException e ) {
 				log.error( "++++ no md5 algorithm found" );
-				throw new IllegalStateException( "++++ no md5 algorythm found");			
+				throw new IllegalStateException( "++++ no md5 algorythm found");
 			}
 		}
 	};
@@ -159,6 +165,7 @@ public class SockIOPool {
 	public static final int CONSISTENT_HASH = 3;				// MD5 Based -- Stops thrashing when a server added or removed
 
 	public static final long MAX_RETRY_DELAY = 10 * 60 * 1000;  // max of 10 minute delay for fall off
+
 
 	// Pool data
 	private MaintThread maintThread;
@@ -196,208 +203,220 @@ public class SockIOPool {
 	// dead server map
 	private Map<String,Date> hostDead;
 	private Map<String,Long> hostDeadDur;
-	
+
 	// map to hold all available sockets
 	// map to hold busy sockets
 	// set to hold sockets to close
 	private Map<String,Map<SockIO,Long>> availPool;
 	private Map<String,Map<SockIO,Long>> busyPool;
-	private Map<SockIO,Integer> deadPool;;
-	
+	private Map<SockIO,Integer> deadPool;
+
+	// Configuration
+    private static final String DEFAULT_CONFIG = "/memcached.xml";
+    private static boolean configLoaded = false;
+    private static Document config;
+
 	// empty constructor
 	protected SockIOPool() { }
-	
-	/** 
-	 * Factory to create/retrieve new pools given a unique poolName. 
-	 * 
+
+	/**
+	 * Factory to create/retrieve new pools given a unique poolName.
+	 *
 	 * @param poolName unique name of the pool
 	 * @return instance of SockIOPool
 	 */
-	public static synchronized SockIOPool getInstance( String poolName ) {
-		if ( pools.containsKey( poolName ) )
-			return pools.get( poolName );
+	public static synchronized SockIOPool getInstance(String poolName) {
+		if (pools.containsKey(poolName)) {
+			return pools.get(poolName);
+		}
 
 		SockIOPool pool = new SockIOPool();
-		pools.put( poolName, pool );
+		Document doc = loadConfiguration();
+
+		if (doc != null) {
+		    initPool(pool, new PoolConfigurationWrapper(doc, poolName));
+		}
+
+		pools.put(poolName, pool);
 
 		return pool;
 	}
 
-	/** 
+	/**
 	 * Single argument version of factory used for back compat.
-	 * Simply creates a pool named "default". 
-	 * 
+	 * Simply creates a pool named "default".
+	 *
 	 * @return instance of SockIOPool
 	 */
 	public static SockIOPool getInstance() {
 		return getInstance( "default" );
 	}
 
-	/** 
-	 * Sets the list of all cache servers. 
-	 * 
+	/**
+	 * Sets the list of all cache servers.
+	 *
 	 * @param servers String array of servers [host:port]
 	 */
 	public void setServers( String[] servers ) { this.servers = servers; }
-	
-	/** 
-	 * Returns the current list of all cache servers. 
-	 * 
+
+	/**
+	 * Returns the current list of all cache servers.
+	 *
 	 * @return String array of servers [host:port]
 	 */
 	public String[] getServers() { return this.servers; }
 
-	/** 
+	/**
 	 * Sets the list of weights to apply to the server list.
 	 *
 	 * This is an int array with each element corresponding to an element<br/>
-	 * in the same position in the server String array. 
-	 * 
+	 * in the same position in the server String array.
+	 *
 	 * @param weights Integer array of weights
 	 */
 	public void setWeights( Integer[] weights ) { this.weights = weights; }
-	
-	/** 
-	 * Returns the current list of weights. 
-	 * 
+
+	/**
+	 * Returns the current list of weights.
+	 *
 	 * @return int array of weights
 	 */
 	public Integer[] getWeights() { return this.weights; }
 
-	/** 
-	 * Sets the initial number of connections per server in the available pool. 
-	 * 
+	/**
+	 * Sets the initial number of connections per server in the available pool.
+	 *
 	 * @param initConn int number of connections
 	 */
 	public void setInitConn( int initConn ) { this.initConn = initConn; }
-	
-	/** 
+
+	/**
 	 * Returns the current setting for the initial number of connections per server in
-	 * the available pool. 
-	 * 
+	 * the available pool.
+	 *
 	 * @return number of connections
 	 */
 	public int getInitConn() { return this.initConn; }
 
-	/** 
-	 * Sets the minimum number of spare connections to maintain in our available pool. 
-	 * 
+	/**
+	 * Sets the minimum number of spare connections to maintain in our available pool.
+	 *
 	 * @param minConn number of connections
 	 */
 	public void setMinConn( int minConn ) { this.minConn = minConn; }
-	
-	/** 
-	 * Returns the minimum number of spare connections in available pool. 
-	 * 
+
+	/**
+	 * Returns the minimum number of spare connections in available pool.
+	 *
 	 * @return number of connections
 	 */
 	public int getMinConn() { return this.minConn; }
 
-	/** 
-	 * Sets the maximum number of spare connections allowed in our available pool. 
-	 * 
+	/**
+	 * Sets the maximum number of spare connections allowed in our available pool.
+	 *
 	 * @param maxConn number of connections
 	 */
 	public void setMaxConn( int maxConn ) { this.maxConn = maxConn; }
 
-	/** 
-	 * Returns the maximum number of spare connections allowed in available pool. 
-	 * 
+	/**
+	 * Returns the maximum number of spare connections allowed in available pool.
+	 *
 	 * @return number of connections
 	 */
 	public int getMaxConn() { return this.maxConn; }
 
-	/** 
+	/**
 	 * Sets the max idle time for threads in the available pool.
-	 * 
+	 *
 	 * @param maxIdle idle time in ms
 	 */
 	public void setMaxIdle( long maxIdle ) { this.maxIdle = maxIdle; }
-	
-	/** 
-	 * Returns the current max idle setting. 
-	 * 
+
+	/**
+	 * Returns the current max idle setting.
+	 *
 	 * @return max idle setting in ms
 	 */
 	public long getMaxIdle() { return this.maxIdle; }
 
-	/** 
+	/**
 	 * Sets the max busy time for threads in the busy pool.
-	 * 
+	 *
 	 * @param maxBusyTime idle time in ms
 	 */
 	public void setMaxBusyTime( long maxBusyTime ) { this.maxBusyTime = maxBusyTime; }
-	
-	/** 
-	 * Returns the current max busy setting. 
-	 * 
+
+	/**
+	 * Returns the current max busy setting.
+	 *
 	 * @return max busy setting in ms
 	 */
 	public long getMaxBusy() { return this.maxBusyTime; }
 
-	/** 
+	/**
 	 * Set the sleep time between runs of the pool maintenance thread.
-	 * If set to 0, then the maint thread will not be started. 
-	 * 
+	 * If set to 0, then the maint thread will not be started.
+	 *
 	 * @param maintSleep sleep time in ms
 	 */
 	public void setMaintSleep( long maintSleep ) { this.maintSleep = maintSleep; }
-	
-	/** 
+
+	/**
 	 * Returns the current maint thread sleep time.
-	 * 
+	 *
 	 * @return sleep time in ms
 	 */
 	public long getMaintSleep() { return this.maintSleep; }
 
-	/** 
+	/**
 	 * Sets the socket timeout for reads.
-	 * 
+	 *
 	 * @param socketTO timeout in ms
 	 */
 	public void setSocketTO( int socketTO ) { this.socketTO = socketTO; }
-	
-	/** 
+
+	/**
 	 * Returns the socket timeout for reads.
-	 * 
+	 *
 	 * @return timeout in ms
 	 */
 	public int getSocketTO() { return this.socketTO; }
 
-	/** 
+	/**
 	 * Sets the socket timeout for connect.
-	 * 
+	 *
 	 * @param socketConnectTO timeout in ms
 	 */
 	public void setSocketConnectTO( int socketConnectTO ) { this.socketConnectTO = socketConnectTO; }
-	
-	/** 
+
+	/**
 	 * Returns the socket timeout for connect.
-	 * 
+	 *
 	 * @return timeout in ms
 	 */
 	public int getSocketConnectTO() { return this.socketConnectTO; }
 
-	/** 
+	/**
 	 * Sets the failover flag for the pool.
 	 *
 	 * If this flag is set to true, and a socket fails to connect,<br/>
 	 * the pool will attempt to return a socket from another server<br/>
 	 * if one exists.  If set to false, then getting a socket<br/>
 	 * will return null if it fails to connect to the requested server.
-	 * 
+	 *
 	 * @param failover true/false
 	 */
 	public void setFailover( boolean failover ) { this.failover = failover; }
-	
-	/** 
+
+	/**
 	 * Returns current state of failover flag.
-	 * 
+	 *
 	 * @return true/false
 	 */
 	public boolean getFailover() { return this.failover; }
 
-	/** 
+	/**
 	 * Sets the failback flag for the pool.
 	 *
 	 * If this is true and we have marked a host as dead,
@@ -407,10 +426,10 @@ public class SockIOPool {
 	 * @param failback true/false
 	 */
 	public void setFailback( boolean failback ) { this.failback = failback; }
-	
-	/** 
+
+	/**
 	 * Returns current state of failover flag.
-	 * 
+	 *
 	 * @return true/false
 	 */
 	public boolean getFailback() { return this.failback; }
@@ -436,23 +455,23 @@ public class SockIOPool {
 	 */
 	public boolean getAliveCheck() { return this.aliveCheck; }
 
-	/** 
+	/**
 	 * Sets the Nagle alg flag for the pool.
 	 *
 	 * If false, will turn off Nagle's algorithm on all sockets created.
-	 * 
+	 *
 	 * @param nagle true/false
 	 */
 	public void setNagle( boolean nagle ) { this.nagle = nagle; }
-	
-	/** 
+
+	/**
 	 * Returns current status of nagle flag
-	 * 
+	 *
 	 * @return true/false
 	 */
 	public boolean getNagle() { return this.nagle; }
 
-	/** 
+	/**
 	 * Sets the hashing algorithm we will use.
 	 *
 	 * The types are as follows.
@@ -460,24 +479,24 @@ public class SockIOPool {
 	 * SockIOPool.NATIVE_HASH (0)     - native String.hashCode() - fast (cached) but not compatible with other clients
 	 * SockIOPool.OLD_COMPAT_HASH (1) - original compatibility hashing alg (works with other clients)
 	 * SockIOPool.NEW_COMPAT_HASH (2) - new CRC32 based compatibility hashing algorithm (fast and works with other clients)
-	 * 
+	 *
 	 * @param alg int value representing hashing algorithm
 	 */
 	public void setHashingAlg( int alg ) { this.hashingAlg = alg; }
 
-	/** 
+	/**
 	 * Returns current status of customHash flag
-	 * 
+	 *
 	 * @return true/false
 	 */
 	public int getHashingAlg() { return this.hashingAlg; }
 
-	/** 
+	/**
 	 * Internal private hashing method.
 	 *
 	 * This is the original hashing algorithm from other clients.
 	 * Found to be slow and have poor distribution.
-	 * 
+	 *
 	 * @param key String to hash
 	 * @return hashCode for this string using our own hashing algorithm
 	 */
@@ -492,16 +511,16 @@ public class SockIOPool {
 		return hash;
 	}
 
-	/** 
+	/**
 	 * Internal private hashing method.
 	 *
 	 * This is the new hashing algorithm from other clients.
-	 * Found to be fast and have very good distribution. 
+	 * Found to be fast and have very good distribution.
 	 *
 	 * UPDATE: This is dog slow under java
-	 * 
-	 * @param key 
-	 * @return 
+	 *
+	 * @param key
+	 * @return
 	 */
 	private static long newCompatHashingAlg( String key ) {
 		CRC32 checksum = new CRC32();
@@ -510,14 +529,14 @@ public class SockIOPool {
 		return (crc >> 16) & 0x7fff;
 	}
 
-	/** 
+	/**
 	 * Internal private hashing method.
 	 *
 	 * MD5 based hash algorithm for use in the consistent
 	 * hashing approach.
-	 * 
-	 * @param key 
-	 * @return 
+	 *
+	 * @param key
+	 * @return
 	 */
 	private static long md5HashingAlg( String key ) {
 		MessageDigest md5 = MD5.get();
@@ -528,9 +547,9 @@ public class SockIOPool {
 		return res;
 	}
 
-	/** 
-	 * Returns a bucket to check for a given key. 
-	 * 
+	/**
+	 * Returns a bucket to check for a given key.
+	 *
 	 * @param key String key cache is stored under
 	 * @return int bucket
 	 */
@@ -575,7 +594,7 @@ public class SockIOPool {
 
 	/**
 	 * Gets the first available key equal or above the given one, if none found,
-	 * returns the first k in the bucket 
+	 * returns the first k in the bucket
 	 * @param k key
 	 * @return
 	 */
@@ -590,8 +609,8 @@ public class SockIOPool {
 		return ( tmap.isEmpty() ) ? this.consistentBuckets.firstKey() : tmap.firstKey();
 	}
 
-	/** 
-	 * Initializes the pool. 
+	/**
+	 * Initializes the pool.
 	 */
 	public void initialize() {
 
@@ -605,6 +624,14 @@ public class SockIOPool {
 				log.error( "++++ trying to initialize an already initialized pool" );
 				return;
 			}
+
+            // if servers is not set, or it empty, then
+            // throw a runtime exception
+            if ( servers == null || servers.length <= 0 ) {
+                log.error("Trying to initialize with no servers");
+
+                throw new IllegalStateException("Trying to initialize with no servers");
+            }
 
 			// pools
 			availPool   = new HashMap<String,Map<SockIO,Long>>( servers.length * initConn );
@@ -621,12 +648,6 @@ public class SockIOPool {
 			log.debug( "++++ min spare   : " + minConn );
 			log.debug( "++++ max spare   : " + maxConn );
 
-			// if servers is not set, or it empty, then
-			// throw a runtime exception
-			if ( servers == null || servers.length <= 0 ) {
-				log.error( "++++ trying to initialize with no servers" );
-				throw new IllegalStateException( "++++ trying to initialize with no servers" );
-			}
 
 			// initalize our internal hashing structures
 			if ( this.hashingAlg == CONSISTENT_HASH )
@@ -691,18 +712,18 @@ public class SockIOPool {
 		else if ( this.weights == null ) {
 			this.totalWeight = this.servers.length;
 		}
-		
+
 		for ( int i = 0; i < servers.length; i++ ) {
 			int thisWeight = 1;
 			if ( this.weights != null && this.weights[i] != null )
 				thisWeight = this.weights[i];
 
 			double factor = Math.floor( ((double)(40 * this.servers.length * thisWeight)) / (double)this.totalWeight );
-			
+
 			for ( long j = 0; j < factor; j++ ) {
 				byte[] d = md5.digest( ( servers[i] + "-" + j ).getBytes() );
 				for ( int h = 0 ; h < 4; h++ ) {
-					Long k = 
+					Long k =
 						  ((long)(d[3+h*4]&0xFF) << 24)
 						| ((long)(d[2+h*4]&0xFF) << 16)
 						| ((long)(d[1+h*4]&0xFF) << 8)
@@ -710,7 +731,7 @@ public class SockIOPool {
 
 					consistentBuckets.put( k, servers[i] );
 					log.debug( "++++ added " + servers[i] + " to server bucket" );
-				}				
+				}
 			}
 
 			// create initial connections
@@ -729,22 +750,22 @@ public class SockIOPool {
 		}
 	}
 
-	/** 
-	 * Returns state of pool. 
-	 * 
+	/**
+	 * Returns state of pool.
+	 *
 	 * @return <CODE>true</CODE> if initialized.
 	 */
 	public boolean isInitialized() {
 		return initialized;
 	}
 
-	/** 
+	/**
 	 * Creates a new SockIO obj for the given server.
 	 *
 	 * If server fails to connect, then return null and do not try<br/>
 	 * again until a duration has passed.  This duration will grow<br/>
-	 * by doubling after each failed attempt to connect. 
-	 * 
+	 * by doubling after each failed attempt to connect.
+	 *
 	 * @param host host:port to connect to
 	 * @return SockIO obj or null if failed to create
 	 */
@@ -819,20 +840,20 @@ public class SockIOPool {
 		return socket;
 	}
 
- 	/** 
-	 * @param key 
-	 * @return 
+ 	/**
+	 * @param key
+	 * @return
 	 */
 	public String getHost( String key ) {
 		return getHost( key, null );
 	}
 
-	/** 
-	 * Gets the host that a particular key / hashcode resides on. 
-	 * 
-	 * @param key 
-	 * @param hashcode 
-	 * @return 
+	/**
+	 * Gets the host that a particular key / hashcode resides on.
+	 *
+	 * @param key
+	 * @param hashcode
+	 * @return
 	 */
 	public String getHost( String key, Integer hashcode ) {
 		SockIO socket = getSock( key, hashcode );
@@ -841,10 +862,10 @@ public class SockIOPool {
 		return host;
 	}
 
-	/** 
+	/**
 	 * Returns appropriate SockIO object given
 	 * string cache key.
-	 * 
+	 *
 	 * @param key hashcode for cache key
 	 * @return SockIO obj connected to server
 	 */
@@ -852,13 +873,13 @@ public class SockIOPool {
 		return getSock( key, null );
 	}
 
-	/** 
+	/**
 	 * Returns appropriate SockIO object given
 	 * string cache key and optional hashcode.
 	 *
 	 * Trys to get SockIO from pool.  Fails over
 	 * to additional pools in event of server failure.
-	 * 
+	 *
 	 * @param key hashcode for cache key
 	 * @param hashCode if not null, then the int hashcode to use
 	 * @return SockIO obj connected to server
@@ -886,7 +907,7 @@ public class SockIOPool {
 				: getConnection( buckets.get( 0 ) );
 
 			if ( sock != null && sock.isConnected() ) {
-				if ( aliveCheck ) { 
+				if ( aliveCheck ) {
 					if ( !sock.isAlive() ) {
 						sock.close();
 						try { sock.trueClose(); } catch ( IOException ioe ) { log.error( "failed to close dead socket" ); }
@@ -903,7 +924,7 @@ public class SockIOPool {
 
 			return sock;
 		}
-		
+
 		// from here on, we are working w/ multiple servers
 		// keep trying different servers until we find one
 		// making sure we only try each server one time
@@ -923,7 +944,7 @@ public class SockIOPool {
 			log.debug( "cache choose " + server + " for " + key );
 
 			if ( sock != null && sock.isConnected() ) {
-				if ( aliveCheck ) { 
+				if ( aliveCheck ) {
 					if ( sock.isAlive() ) {
 						return sock;
 					}
@@ -956,7 +977,7 @@ public class SockIOPool {
 
 			// if we failed to get a socket from this server
 			// then we try again by adding an incrementer to the
-			// current key and then rehashing 
+			// current key and then rehashing
 			int rehashTries = 0;
 			while ( !tryServers.contains( server ) ) {
 
@@ -975,13 +996,13 @@ public class SockIOPool {
 		return null;
 	}
 
-	/** 
+	/**
 	 * Returns a SockIO object from the pool for the passed in host.
 	 *
 	 * Meant to be called from a more intelligent method<br/>
 	 * which handles choosing appropriate server<br/>
-	 * and failover. 
-	 * 
+	 * and failover.
+	 *
 	 * @param host host from which to retrieve object
 	 * @return SockIO object or null if fail to retrieve one
 	 */
@@ -1032,7 +1053,7 @@ public class SockIOPool {
 				}
 			}
 		}
-			
+
 		// create one socket -- let the maint thread take care of creating more
 		SockIO socket = createSocket( host );
 		if ( socket != null ) {
@@ -1044,12 +1065,12 @@ public class SockIOPool {
 		return socket;
 	}
 
-	/** 
+	/**
 	 * Adds a socket to a given pool for the given host.
 	 * THIS METHOD IS NOT THREADSAFE, SO BE CAREFUL WHEN USING!
 	 *
-	 * Internal utility method. 
-	 * 
+	 * Internal utility method.
+	 *
 	 * @param pool pool to add to
 	 * @param host host this socket is connected to
 	 * @param socket socket to add
@@ -1072,12 +1093,12 @@ public class SockIOPool {
 		pool.put( host, sockets );
 	}
 
-	/** 
+	/**
 	 * Removes a socket from specified pool for host.
 	 * THIS METHOD IS NOT THREADSAFE, SO BE CAREFUL WHEN USING!
 	 *
-	 * Internal utility method. 
-	 * 
+	 * Internal utility method.
+	 *
 	 * @param pool pool to remove from
 	 * @param host host pool
 	 * @param socket socket to remove
@@ -1090,11 +1111,11 @@ public class SockIOPool {
 		}
 	}
 
-	/** 
-	 * Closes and removes all sockets from specified pool for host. 
+	/**
+	 * Closes and removes all sockets from specified pool for host.
 	 * THIS METHOD IS NOT THREADSAFE, SO BE CAREFUL WHEN USING!
-	 * 
-	 * Internal utility method. 
+	 *
+	 * Internal utility method.
 	 *
 	 * @param pool pool to clear
 	 * @param host host to clear
@@ -1121,7 +1142,7 @@ public class SockIOPool {
 		}
 	}
 
-	/** 
+	/**
 	 * Checks a SockIO object in with the pool.
 	 *
 	 * This will remove SocketIO from busy pool, and optionally<br/>
@@ -1152,24 +1173,24 @@ public class SockIOPool {
 		}
 	}
 
-	/** 
+	/**
 	 * Returns a socket to the avail pool.
 	 *
 	 * This is called from SockIO.close().  Calling this method<br/>
 	 * directly without closing the SockIO object first<br/>
 	 * will cause an IOException to be thrown.
-	 * 
+	 *
 	 * @param socket socket to return
 	 */
 	private void checkIn( SockIO socket ) {
 		checkIn( socket, true );
 	}
 
-	/** 
+	/**
 	 * Closes all sockets in the passed in pool.
 	 *
-	 * Internal utility method. 
-	 * 
+	 * Internal utility method.
+	 *
 	 * @param pool pool to close
 	 */
 	protected void closePool( Map<String,Map<SockIO,Long>> pool ) {
@@ -1193,7 +1214,7 @@ public class SockIOPool {
 		 }
 	}
 
-	/** 
+	/**
 	 * Shuts down the pool.
 	 *
 	 * Cleanly closes all sockets.<br/>
@@ -1230,7 +1251,7 @@ public class SockIOPool {
 		}
 	}
 
-	/** 
+	/**
 	 * Starts the maintenance thread.
 	 *
 	 * This thread will manage the size of the active pool<br/>
@@ -1255,7 +1276,7 @@ public class SockIOPool {
 		}
 	}
 
-	/** 
+	/**
 	 * Stops the maintenance thread.
 	 */
 	protected void stopMaintThread() {
@@ -1263,10 +1284,10 @@ public class SockIOPool {
 			maintThread.stopThread();
 	}
 
-	/** 
+	/**
 	 * Runs self maintenance on all internal pools.
 	 *
-	 * This is typically called by the maintenance thread to manage pool size. 
+	 * This is typically called by the maintenance thread to manage pool size.
 	 */
 	protected void selfMaint() {
 		log.debug( "++++ Starting self maintenance...." );
@@ -1419,10 +1440,63 @@ public class SockIOPool {
 
 		log.debug( "+++ ending self maintenance." );
 	}
-	
-	/** 
+
+	protected static Document loadConfiguration() {
+	    if ((config == null) && (!configLoaded)) {
+	        configLoaded = true;
+	        InputStream in = SockIOPool.class.getResourceAsStream(DEFAULT_CONFIG);
+
+	        if (in != null) {
+	            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+
+	            docFactory.setNamespaceAware(true);
+
+	            try {
+                    config = docFactory.newDocumentBuilder().parse(in);
+                } catch (SAXException e) {
+                    log.error("Unable to parse configuration file ["+ DEFAULT_CONFIG + "]", e);
+                } catch (IOException e) {
+                    log.error("Unable to parse configuration file ["+ DEFAULT_CONFIG + "]", e);
+                } catch (ParserConfigurationException e) {
+                    log.error("Unable to parse configuration file ["+ DEFAULT_CONFIG + "]", e);
+                }
+
+                try {
+                    in.close();
+                } catch (IOException e) {
+                    log.warn("Unable to close configuration file ["+ DEFAULT_CONFIG + "]", e);
+                }
+	        } else {
+	            log.warn("Unable to load default configuration from ["+ DEFAULT_CONFIG + "]");
+	        }
+	    }
+
+	    return config;
+    }
+
+	protected static void initPool(SockIOPool pool, PoolConfigurationWrapper wrapper) {
+	    pool.setServers(wrapper.getServers());
+	    pool.setWeights(wrapper.getWeights());
+
+	    pool.setInitConn(wrapper.getInitConnections());
+	    pool.setMinConn(wrapper.getMinConnections());
+	    pool.setMaxConn(wrapper.getMaxConnections());
+	    pool.setMaxIdle(wrapper.getMaxIdle());
+
+	    // set the sleep for the maint thread
+	    // it will wake up every x seconds and
+	    // maintain the pool size
+	    pool.setMaintSleep(wrapper.getMaintSleep());
+
+	    // set some TCP settings
+	    pool.setNagle(wrapper.getNagle());
+	    pool.setSocketTO(wrapper.getSocketTO());
+	    pool.setSocketConnectTO(wrapper.getSocketConnectTO());
+	}
+
+	/**
 	 * Class which extends thread and handles maintenance of the pool.
-	 * 
+	 *
 	 * @author greg whalin <greg@meetup.com>
 	 * @version 1.5
 	 */
@@ -1441,21 +1515,21 @@ public class SockIOPool {
 		}
 
 		public void setInterval( long interval ) { this.interval = interval; }
-		
+
 		public boolean isRunning() {
 			return this.running;
 		}
 
-		/** 
+		/**
 		 * sets stop variable
-		 * and interupts any wait 
+		 * and interupts any wait
 		 */
 		public void stopThread() {
 			this.stopThread = true;
 			this.interrupt();
 		}
 
-		/** 
+		/**
 		 * Start the thread.
 		 */
 		public void run() {
@@ -1480,12 +1554,12 @@ public class SockIOPool {
 		}
 	}
 
-	/** 
+	/**
 	 * MemCached Java client, utility class for Socket IO.
 	 *
 	 * This class is a wrapper around a Socket and its streams.
 	 *
-	 * @author greg whalin <greg@meetup.com> 
+	 * @author greg whalin <greg@meetup.com>
 	 * @author Richard 'toast' Russo <russor@msoe.edu>
 	 * @version 1.5
 	 */
@@ -1503,10 +1577,10 @@ public class SockIOPool {
 		private DataInputStream in;
 		private BufferedOutputStream out;
 
-		/** 
+		/**
 		 * creates a new SockIO object wrapping a socket
 		 * connection to host:port, and its input and output streams
-		 * 
+		 *
 		 * @param pool Pool this object is tied to
 		 * @param host host to connect to
 		 * @param port port to connect to
@@ -1522,7 +1596,7 @@ public class SockIOPool {
 
 			// get a socket channel
 			sock = getSocket( host, port, connectTimeout );
-			
+
 			if ( timeout >= 0 )
 				sock.setSoTimeout( timeout );
 
@@ -1536,10 +1610,10 @@ public class SockIOPool {
 			this.host = host + ":" + port;
 		}
 
-		/** 
+		/**
 		 * creates a new SockIO object wrapping a socket
 		 * connection to host:port, and its input and output streams
-		 * 
+		 *
 		 * @param host hostname:port
 		 * @param timeout read timeout value for connected socket
 		 * @param connectTimeout timeout for initial connections
@@ -1569,7 +1643,7 @@ public class SockIOPool {
 			this.host = host;
 		}
 
-		/** 
+		/**
 		 * Method which gets a connection from SocketChannel.
 		 *
 		 * @param host host to establish connection to
@@ -1585,22 +1659,22 @@ public class SockIOPool {
 			return sock.socket();
 		}
 
-		/** 
-		 * Lets caller get access to underlying channel. 
-		 * 
+		/**
+		 * Lets caller get access to underlying channel.
+		 *
 		 * @return the backing SocketChannel
 		 */
 		public SocketChannel getChannel() { return sock.getChannel(); }
 
-		/** 
-		 * returns the host this socket is connected to 
-		 * 
+		/**
+		 * returns the host this socket is connected to
+		 *
 		 * @return String representation of host (hostname:port)
 		 */
 		public String getHost() { return this.host; }
 
-		/** 
-		 * closes socket and all streams connected to it 
+		/**
+		 * closes socket and all streams connected to it
 		 *
 		 * @throws IOException if fails to close streams or socket
 		 */
@@ -1666,7 +1740,7 @@ public class SockIOPool {
 				throw new IOException( errMsg.toString() );
 		}
 
-		/** 
+		/**
 		 * sets closed flag and checks in to connection pool
 		 * but does not close connections
 		 */
@@ -1675,10 +1749,10 @@ public class SockIOPool {
 			log.debug("++++ marking socket (" + this.toString() + ") as closed and available to return to avail pool");
 			pool.checkIn( this );
 		}
-		
-		/** 
-		 * checks if the connection is open 
-		 * 
+
+		/**
+		 * checks if the connection is open
+		 *
 		 * @return true if connected
 		 */
 		boolean isConnected() {
@@ -1708,10 +1782,10 @@ public class SockIOPool {
 			return true;
 		}
 
-		/** 
+		/**
 		 * reads a line
-		 * intentionally not using the deprecated readLine method from DataInputStream 
-		 * 
+		 * intentionally not using the deprecated readLine method from DataInputStream
+		 *
 		 * @return String that was read in
 		 * @throws IOException if io problems during read
 		 */
@@ -1751,9 +1825,9 @@ public class SockIOPool {
 			return bos.toString().trim();
 		}
 
-		/** 
-		 * reads up to end of line and returns nothing 
-		 * 
+		/**
+		 * reads up to end of line and returns nothing
+		 *
 		 * @throws IOException if io problems during read
 		 */
 		public void clearEOL() throws IOException {
@@ -1782,9 +1856,9 @@ public class SockIOPool {
 			}
 		}
 
-		/** 
+		/**
 		 * reads length bytes into the passed in byte array from dtream
-		 * 
+		 *
 		 * @param b byte array
 		 * @throws IOException if io problems during read
 		 */
@@ -1803,9 +1877,9 @@ public class SockIOPool {
 			return count;
 		}
 
-		/** 
-		 * flushes output stream 
-		 * 
+		/**
+		 * flushes output stream
+		 *
 		 * @throws IOException if io problems during read
 		 */
 		void flush() throws IOException {
@@ -1815,10 +1889,10 @@ public class SockIOPool {
 			}
 			out.flush();
 		}
-		
-		/** 
+
+		/**
 		 * writes a byte array to the output stream
-		 * 
+		 *
 		 * @param b byte array to write
 		 * @throws IOException if an io error happens
 		 */
@@ -1830,27 +1904,27 @@ public class SockIOPool {
 			out.write( b );
 		}
 
-		/** 
+		/**
 		 * use the sockets hashcode for this object
-		 * so we can key off of SockIOs 
-		 * 
+		 * so we can key off of SockIOs
+		 *
 		 * @return int hashcode
 		 */
 		public int hashCode() {
 			return ( sock == null ) ? 0 : sock.hashCode();
 		}
 
-		/** 
-		 * returns the string representation of this socket 
-		 * 
+		/**
+		 * returns the string representation of this socket
+		 *
 		 * @return string
 		 */
 		public String toString() {
 			return ( sock == null ) ? "" : sock.toString();
 		}
 
-		/** 
-		 * Hack to reap any leaking children. 
+		/**
+		 * Hack to reap any leaking children.
 		 */
 		protected void finalize() throws Throwable {
 			try {
