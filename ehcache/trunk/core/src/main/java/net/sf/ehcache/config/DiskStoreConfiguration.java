@@ -16,6 +16,8 @@
 
 package net.sf.ehcache.config;
 
+import net.sf.ehcache.store.Store;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -28,9 +30,44 @@ import java.io.File;
  * @version $Id: DiskStoreConfiguration.java 519 2007-07-27 07:11:45Z gregluck $
  */
 public final class DiskStoreConfiguration {
-    private static final Log LOG = LogFactory.getLog(DiskStoreConfiguration.class.getName());
+    private static final Log log = LogFactory.getLog(DiskStoreConfiguration.class.getName());
 
     private String path;
+    private Class<? extends Store> store;
+
+    /**
+     * Return class-implementation for disk store.
+     * @return the store
+     */
+    public Class<? extends Store> getStore() {
+        return store;
+    }
+
+    /**
+     * @param storeClass the store to set
+     */
+    @SuppressWarnings("unchecked")
+    public void setStore(String storeClass) {
+        if ((storeClass == null) || (storeClass.trim().equals(""))) {
+            return;
+        }
+
+        try {
+            Class clazz = Class.forName(storeClass);
+
+            if (!Store.class.isAssignableFrom(clazz)) {
+                throw new IllegalArgumentException("Class " + storeClass + " is not assignable from ehcache Store class");
+            }
+
+            if (log.isDebugEnabled()) {
+                log.debug("Disk Store Class: " + storeClass);
+            }
+
+            this.store = clazz;
+        } catch (ClassNotFoundException e) {
+            throw new IllegalArgumentException("Class " + storeClass + " is not found");
+        }
+    }
 
     /**
      * The diskStore path
@@ -62,14 +99,14 @@ public final class DiskStoreConfiguration {
         String translatedPath = replaceToken(Env.USER_HOME, System.getProperty(Env.USER_HOME), path);
         translatedPath = replaceToken(Env.USER_DIR, System.getProperty(Env.USER_DIR), translatedPath);
         translatedPath = replaceToken(Env.JAVA_IO_TMPDIR, System.getProperty(Env.JAVA_IO_TMPDIR), translatedPath);
-        String separator = File.separator;
+
         //Remove duplicate separators: Windows and Solaris
         translatedPath = replaceToken(File.separator + File.separator, File.separator, translatedPath);
 
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Disk Store Path: " + translatedPath);
+        if (log.isDebugEnabled()) {
+            log.debug("Disk Store Path: " + translatedPath);
         }
+
         this.path = translatedPath;
     }
 
@@ -94,5 +131,4 @@ public final class DiskStoreConfiguration {
                     .toString();
         }
     }
-
 }

@@ -16,27 +16,10 @@
 
 package net.sf.ehcache;
 
-import edu.emory.mathcs.backport.java.util.concurrent.ExecutionException;
-import edu.emory.mathcs.backport.java.util.concurrent.Future;
-import edu.emory.mathcs.backport.java.util.concurrent.LinkedBlockingQueue;
-import edu.emory.mathcs.backport.java.util.concurrent.ThreadPoolExecutor;
-import edu.emory.mathcs.backport.java.util.concurrent.TimeUnit;
-import net.sf.ehcache.bootstrap.BootstrapCacheLoader;
-import net.sf.ehcache.config.CacheConfiguration;
-import net.sf.ehcache.event.CacheEventListener;
-import net.sf.ehcache.event.RegisteredEventListeners;
-import net.sf.ehcache.exceptionhandler.CacheExceptionHandler;
-import net.sf.ehcache.extension.CacheExtension;
-import net.sf.ehcache.loader.CacheLoader;
-import net.sf.ehcache.store.DiskStore;
-import net.sf.ehcache.store.MemoryStore;
-import net.sf.ehcache.store.MemoryStoreEvictionPolicy;
-import net.sf.ehcache.store.Store;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.server.UID;
@@ -50,6 +33,27 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import net.sf.ehcache.bootstrap.BootstrapCacheLoader;
+import net.sf.ehcache.config.CacheConfiguration;
+import net.sf.ehcache.event.CacheEventListener;
+import net.sf.ehcache.event.RegisteredEventListeners;
+import net.sf.ehcache.exceptionhandler.CacheExceptionHandler;
+import net.sf.ehcache.extension.CacheExtension;
+import net.sf.ehcache.loader.CacheLoader;
+import net.sf.ehcache.store.DiskStore;
+import net.sf.ehcache.store.MemoryStore;
+import net.sf.ehcache.store.MemoryStoreEvictionPolicy;
+import net.sf.ehcache.store.Store;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import edu.emory.mathcs.backport.java.util.concurrent.ExecutionException;
+import edu.emory.mathcs.backport.java.util.concurrent.Future;
+import edu.emory.mathcs.backport.java.util.concurrent.LinkedBlockingQueue;
+import edu.emory.mathcs.backport.java.util.concurrent.ThreadPoolExecutor;
+import edu.emory.mathcs.backport.java.util.concurrent.TimeUnit;
 
 /**
  * Cache is the central class in ehcache. Caches have {@link Element}s and are managed
@@ -131,6 +135,8 @@ public class Cache implements Ehcache {
     private boolean disabled;
 
     private Store diskStore;
+
+    private Class<? extends Store> diskStoreClass;
 
     private String diskStorePath;
 
@@ -416,6 +422,7 @@ public class Cache implements Ehcache {
                 maxElementsInMemory,
                 memoryStoreEvictionPolicy,
                 overflowToDisk,
+                null,
                 diskStorePath,
                 eternal,
                 timeToLiveSeconds,
@@ -459,6 +466,7 @@ public class Cache implements Ehcache {
                  int maxElementsInMemory,
                  MemoryStoreEvictionPolicy memoryStoreEvictionPolicy,
                  boolean overflowToDisk,
+                 Class<? extends Store> diskStoreClass,
                  String diskStorePath,
                  boolean eternal,
                  long timeToLiveSeconds,
@@ -485,6 +493,11 @@ public class Cache implements Ehcache {
         configuration.setDiskPersistent(diskPersistent);
         configuration.setMaxElementsOnDisk(maxElementsOnDisk);
 
+        if (diskStoreClass == null) {
+            this.diskStoreClass = DiskStore.class;
+        } else {
+            this.diskStoreClass = diskStoreClass;
+        }
 
         if (diskStorePath == null) {
             this.diskStorePath = System.getProperty("java.io.tmpdir");
@@ -568,9 +581,72 @@ public class Cache implements Ehcache {
      */
     protected Store createDiskStore() {
         if (configuration.isOverflowToDisk()) {
-            return new DiskStore(this, diskStorePath);
+            return newStoreInstance((Ehcache) this, diskStorePath);
         } else {
             return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Store newStoreInstance(Object ... parameters) {
+        Class[] classes = new Class[parameters.length];
+
+        for (int i = 0; i < parameters.length; i++) {
+            classes[i] = parameters[i].getClass();
+        }
+
+        Constructor<? extends Store> constructor = null;
+
+        try {
+            // Trying to find apropriate constructor for parameters
+            for (Constructor c : diskStoreClass.getConstructors()) {
+                Class[] types = c.getParameterTypes();
+
+                if (types.length == classes.length) {
+                    boolean isAssignable = true;
+
+                    for (int i = 0; i < types.length; i++) {
+                        if (!types[i].isAssignableFrom(classes[i])) {
+                            isAssignable = false;
+                            break;
+                        }
+                    }
+
+                    if (isAssignable) {
+                        constructor = c;
+                    }
+                }
+            }
+        } catch (SecurityException e) {
+            // ignoring all exceptions
+        }
+
+        Store instance = null;
+
+        if (constructor != null) {
+            try {
+                instance = constructor.newInstance(parameters);
+            } catch (IllegalArgumentException e) {
+                // ignoring all exceptions
+            } catch (InstantiationException e) {
+                // ignoring all exceptions
+            } catch (IllegalAccessException e) {
+                // ignoring all exceptions
+            } catch (InvocationTargetException e) {
+                // ignoring all exceptions
+            }
+        }
+
+        if (instance != null) {
+            return instance;
+        } else if ((instance == null) && (parameters.length == 0)) {
+            throw new IllegalArgumentException("Unable to create new instance of " + diskStoreClass);
+        } else {
+            Object[] newParams = new Object[parameters.length - 1];
+
+            System.arraycopy(parameters, 0, newParams, 0, parameters.length - 1);
+
+            return newStoreInstance(newParams);
         }
     }
 

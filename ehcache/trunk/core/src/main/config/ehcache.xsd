@@ -17,7 +17,8 @@
     </xs:element>
     <xs:element name="diskStore">
         <xs:complexType>
-            <xs:attribute name="path" use="optional" />
+        	<xs:attribute name="path" use="optional" />
+        	<xs:attribute name="store" use="optional" />
         </xs:complexType>
     </xs:element>
     <xs:element name="cacheManagerEventListenerFactory">

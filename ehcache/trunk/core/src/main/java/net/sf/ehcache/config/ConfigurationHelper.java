@@ -38,6 +38,7 @@ import net.sf.ehcache.event.CacheEventListenerFactory;
 import net.sf.ehcache.event.CacheManagerEventListener;
 import net.sf.ehcache.event.CacheManagerEventListenerFactory;
 import net.sf.ehcache.event.RegisteredEventListeners;
+import net.sf.ehcache.store.Store;
 import net.sf.ehcache.util.ClassLoaderUtil;
 import net.sf.ehcache.util.PropertyUtil;
 import org.apache.commons.logging.Log;
@@ -308,7 +309,6 @@ public final class ConfigurationHelper {
         }
     }
 
-
     /**
      * @return the disk store path, or null if not set.
      */
@@ -318,6 +318,19 @@ public final class ConfigurationHelper {
             return null;
         } else {
             return diskStoreConfiguration.getPath();
+        }
+    }
+
+    /**
+     * @return the disk store path, or null if not set.
+     */
+    public final Class<? extends Store> getDiskStoreClass() {
+        DiskStoreConfiguration diskStoreConfiguration = configuration.getDiskStoreConfiguration();
+
+        if (diskStoreConfiguration == null) {
+            return null;
+        } else {
+            return diskStoreConfiguration.getStore();
         }
     }
 
@@ -402,6 +415,7 @@ public final class ConfigurationHelper {
                 cacheConfiguration.maxElementsInMemory,
                 cacheConfiguration.memoryStoreEvictionPolicy,
                 cacheConfiguration.overflowToDisk,
+                getDiskStoreClass(),
                 getDiskStorePath(),
                 cacheConfiguration.eternal,
                 cacheConfiguration.timeToLiveSeconds,
