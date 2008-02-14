@@ -3,12 +3,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>net.sf.ehcache</groupId>
-        <artifactId>ehcache-parent</artifactId>
-        <version>1.4.0</version>
+        <groupId>com.googlecode.ehmem</groupId>
+        <artifactId>ehcache-ehmem-parent</artifactId>
+        <version>0.1-SNAPSHOT</version>
     </parent>
+
     <name>Ehcache Core</name>
-    <artifactId>ehcache</artifactId>
+    <artifactId>ehcache-ehmem</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -110,7 +111,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
                 <executions>
-                    <execution>
+                    <!-- execution>
                         <id>rmic</id>
                         <phase>compile</phase>
                         <configuration>
@@ -122,9 +123,9 @@
                         <goals>
                             <goal>run</goal>
                         </goals>
-                    </execution>
+                    </execution -->
 
-                    <execution>
+                    <!-- execution>
                         <id>generate-checkstyle</id>
                         <phase>validate</phase>
                         <configuration>
@@ -137,7 +138,7 @@
                         <goals>
                             <goal>run</goal>
                         </goals>
-                    </execution>
+                    </execution-->
 
                     <!--<execution>-->
                         <!--<id>singlepageguide</id>-->
@@ -225,7 +226,7 @@
                 </executions>
             </plugin>
 
-            <plugin>
+            <!-- plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <executions>
@@ -237,23 +238,23 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin -->
 
-            <plugin>
+            <!-- plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>2.2-SNAPSHOT</version>
                 <executions>
                     <execution>
                         <id>check</id>
-                        <!-- 4.3 seems to have a bug and needs to run after compile -->
+                        < ! - - 4.3 seems to have a bug and needs to run after compile - - >
                         <phase>test</phase>
                         <goals>
                             <goal>check</goal>
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin -->
 
         </plugins>
     </build>
@@ -405,7 +406,7 @@
 
     <!-- Note: site URL repeated here to ensure correct deployment path -->
     <distributionManagement>
-        <!--  
+        <!--
           The server id here defined must also appear in ~/.m2/settings.xml with username
         -->
         <site>
