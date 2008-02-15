@@ -1,0 +1,21 @@
+#summary Change log for ehmem project
+#labels Featured
+
+===Version 0.1 (Feb, 15 2007)===
+
+ehcache from this version is fully compatible with ehcache 1.4 - don't need to change API usage or recompile existed code.
+One major difference is new configuration parameter:
+{{{
+    <diskStore path="java.io.tmpdir"
+	       store="com.danga.jmemcached.ehcache.MemcachedStore"/>
+}}}
+
+   With parameter _store_ you could specify custom store implementation that could be used instead of default `DiskStore`. Default `DiskStore` implementation will be used if custom store is not specified.
+
+Changes in memcached client are much more solid.
+
+  # Main package for client was changed to `com.danga.jmemcached`
+  # Added maven project model.
+  # Added simple stub implementation for ehcache `Store`.
+  # Removed internal logger and attached `commons-logging`.
+  # Added xml configuration for memcached pool - [http://ehmem.googlecode.com/svn/java_memcached/trunk/src/main/config/memcached.xml look at example]
