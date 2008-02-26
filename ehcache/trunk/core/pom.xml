@@ -43,10 +43,6 @@
             <artifactId>hibernate</artifactId>
         </dependency>
         <dependency>
-            <groupId>net.sf.hibernate</groupId>
-            <artifactId>hibernate</artifactId>
-        </dependency>
-        <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
         </dependency>

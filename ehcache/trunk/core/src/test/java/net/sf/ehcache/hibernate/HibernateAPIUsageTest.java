@@ -16,20 +16,21 @@
 
 package net.sf.ehcache.hibernate;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Properties;
+
 import net.sf.ehcache.AbstractCacheTest;
-import net.sf.ehcache.CacheTest;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.CacheTest;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.cfg.Environment;
-
-import java.io.Serializable;
-import java.io.IOException;
-import java.util.Map;
-import java.util.Properties;
 
 
 /**
@@ -54,20 +55,20 @@ public class HibernateAPIUsageTest extends AbstractCacheTest {
     /**
      * Make sure ehcache works with one of the main projects using it: Hibernate-2.1.8
      */
-    public void testAPIAsUsedByHibernate2() throws net.sf.hibernate.cache.CacheException {
-        net.sf.hibernate.cache.EhCacheProvider provider = new net.sf.hibernate.cache.EhCacheProvider();
-        provider.start(null);
-        net.sf.hibernate.cache.Cache cache = provider.buildCache("sampleCache1", null);
-        assertNotNull(manager.getCache("sampleCache1"));
-
-        Serializable key = "key";
-        Serializable value = "value";
-        cache.put(key, value);
-        assertEquals(value, cache.get(key));
-
-        cache.remove(key);
-        assertEquals(null, cache.get(key));
-    }
+//    public void testAPIAsUsedByHibernate2() throws net.sf.hibernate.cache.CacheException {
+//        net.sf.hibernate.cache.EhCacheProvider provider = new net.sf.hibernate.cache.EhCacheProvider();
+//        provider.start(null);
+//        net.sf.hibernate.cache.Cache cache = provider.buildCache("sampleCache1", null);
+//        assertNotNull(manager.getCache("sampleCache1"));
+//
+//        Serializable key = "key";
+//        Serializable value = "value";
+//        cache.put(key, value);
+//        assertEquals(value, cache.get(key));
+//
+//        cache.remove(key);
+//        assertEquals(null, cache.get(key));
+//    }
 
 
     /**
