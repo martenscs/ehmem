@@ -15,7 +15,7 @@
     <inceptionYear>2003</inceptionYear>
 
     <modules>
-        <!-- module>core</module -->
+        <module>core</module>
         <!-- module>debugger</module -->
         <!-- module>site</module -->
         <!--<module>distribution</module>-->
@@ -74,37 +74,11 @@
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>net.sf.hibernate</groupId>
-                <artifactId>hibernate</artifactId>
-                <version>2.1.8</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>javax.transaction</groupId>
-                        <artifactId>jta</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.security</groupId>
-                        <artifactId>jacc</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>net.sf.ehcache</groupId>
-                        <artifactId>ehcache</artifactId>
-                    </exclusion>
-                </exclusions>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
                 <groupId>javax.servlet</groupId>
                 <artifactId>servlet-api</artifactId>
                 <version>2.4</version>
                 <scope>provided</scope>
             </dependency>
-            <!--<dependency>-->
-            <!--<groupId>javax.management</groupId>-->
-            <!--<artifactId>jmx</artifactId>-->
-            <!--<version>1.3</version>-->
-            <!--<scope>system</scope>-->
-            <!--</dependency>-->
 
             <!-- Test scope -->
             <dependency>
@@ -195,13 +169,21 @@
     </dependencyManagement>
 
     <build>
+		<extensions>
+			<extension>
+				<groupId>org.apache.maven.wagon</groupId>
+				<artifactId>wagon-webdav</artifactId>
+				<version>1.0-beta-2</version>
+			</extension>
+		</extensions>
+
         <pluginManagement>
             <plugins>
 	            <plugin>
     	            <artifactId>maven-compiler-plugin</artifactId>
         	        <configuration>
-            	        <source>1.6</source>
-                	    <target>1.6</target>
+            	        <source>1.5</source>
+                	    <target>1.5</target>
                     	<encoding>UTF-8</encoding>
 	                </configuration>
 				</plugin>
@@ -438,42 +420,4 @@
         <system>Sourceforge</system>
         <url>http://sourceforge.net/tracker/?group_id=93232&amp;atid=603559</url>
     </issueManagement>
-
-
-    <distributionManagement>
-        <!--
-          The server id here defined must also appear in ~/.m2/settings.xml with username
-        -->
-        <repository>
-            <id>sourceforge.net</id>
-            <name>SF EHCache Repository</name>
-            <url>scp://shell.sf.net:/home/groups/e/eh/ehcache/htdocs/repository</url>
-        </repository>
-        <site>
-            <id>sourceforge.net</id>
-            <name>SF EHCache Site</name>
-            <url>scp://shell.sf.net:/home/groups/e/eh/ehcache/htdocs</url>
-        </site>
-    </distributionManagement>
-
-    <mailingLists>
-        <mailingList>
-            <name>ehcache-list@lists.sourceforge.net</name>
-            <subscribe>http://lists.sourceforge.net/lists/listinfo/ehcache-list</subscribe>
-            <unsubscribe>http://lists.sourceforge.net/lists/listinfo/ehcache-list</unsubscribe>
-            <post>ehcache-list@lists.sourceforge.net</post>
-            <archive>http://sourceforge.net/mailarchive/forum.php?forum=ehcache-list</archive>
-        </mailingList>
-    </mailingLists>
-
-    <scm>
-        <connection>scm:svn:https://ehcache.svn.sourceforge.net/svnroot</connection>
-        <developerConnection>
-            scm:svn:https://username@ehcache.svn.sourceforge.net/svnroot
-        </developerConnection>
-        <tag/>
-        <url>http://ehcache.svn.sourceforge.net/viewvc</url>
-    </scm>
-
-
 </project>

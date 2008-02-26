@@ -109,59 +109,6 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-antrun-plugin</artifactId>
-                <executions>
-                    <!-- execution>
-                        <id>rmic</id>
-                        <phase>compile</phase>
-                        <configuration>
-                            <tasks>
-                                <rmic base="${project.build.outputDirectory}"
-                                      includes="**/RMICachePeer.class"/>
-                            </tasks>
-                        </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                    </execution -->
-
-                    <!-- execution>
-                        <id>generate-checkstyle</id>
-                        <phase>validate</phase>
-                        <configuration>
-                            <tasks>
-                                <ant antfile="${basedir}/build.xml" inheritRefs="true">
-                                    <target name="generate-checkstyle-config"/>
-                                </ant>
-                            </tasks>
-                        </configuration>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
-                    </execution-->
-
-                    <!--<execution>-->
-                        <!--<id>singlepageguide</id>-->
-                        <!--<phase>verify</phase>-->
-                        <!--<configuration>-->
-                            <!--<tasks>-->
-                                <!--<ant antfile="${basedir}/build.xml" inheritRefs="true">-->
-                                    <!--<target name="singlepageguide"/>-->
-                                <!--</ant>-->
-                            <!--</tasks>-->
-                        <!--</configuration>-->
-                        <!--<goals>-->
-                            <!--<goal>run</goal>-->
-                        <!--</goals>-->
-                    <!--</execution>-->
-
-
-                </executions>
-            </plugin>
-
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.3</version>
                 <inherited>true</inherited>
@@ -400,21 +347,8 @@
                     <outputDirectory>${project.build.directory}/site</outputDirectory>
                 </configuration>
             </plugin>
-
         </plugins>
     </reporting>
-
-    <!-- Note: site URL repeated here to ensure correct deployment path -->
-    <distributionManagement>
-        <!--
-          The server id here defined must also appear in ~/.m2/settings.xml with username
-        -->
-        <site>
-            <id>sourceforge.net</id>
-            <name>SF EHCache Site</name>
-            <url>scp://shell.sf.net:/home/groups/e/eh/ehcache/htdocs</url>
-        </site>
-    </distributionManagement>
 
     <properties>
         <net.sf.ehcache.speedAdjustmentFactor>1</net.sf.ehcache.speedAdjustmentFactor>
