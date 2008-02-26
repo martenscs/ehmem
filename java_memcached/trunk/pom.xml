@@ -7,7 +7,7 @@
     <groupId>com.googlecode.ehmem</groupId>
     <artifactId>jmemcached-ehmem</artifactId>
     <packaging>jar</packaging>
-    <version>0.1</version>
+    <version>0.2-SNAPSHOT</version>
 
     <name>Java API for memcached server</name>
 
@@ -40,7 +40,7 @@
 		<dependency>
         	<groupId>com.googlecode.ehmem</groupId>
     		<artifactId>ehcache-ehmem</artifactId>
-        	<version>0.1</version>
+        	<version>0.2-SNAPSHOT</version>
         	<scope>provided</scope>
 		</dependency>
 	</dependencies>

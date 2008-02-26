@@ -6,7 +6,7 @@
     <groupId>com.googlecode.ehmem</groupId>
     <artifactId>ehcache-ehmem-parent</artifactId>
     <packaging>pom</packaging>
-    <version>0.1</version>
+    <version>0.2-SNAPSHOT</version>
 
     <name>Ehcache Parent</name>
     <description><![CDATA[Ehcache is a widely used, pure Java, distributed in-process cache]]>
