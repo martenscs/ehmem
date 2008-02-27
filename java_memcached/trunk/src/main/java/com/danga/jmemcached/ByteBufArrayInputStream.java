@@ -42,7 +42,8 @@ public final class ByteBufArrayInputStream extends InputStream implements LineIn
 			b.flip();
 	}
 	
-	public int read() {
+	@Override
+    public int read() {
 		do {
 			if ( bufs[currentBuf].hasRemaining() )
 				return bufs[currentBuf].get();
@@ -54,7 +55,8 @@ public final class ByteBufArrayInputStream extends InputStream implements LineIn
 		return -1;
 	}
 	
-	public int read( byte[] buf ) {
+	@Override
+    public int read(byte[] buf) {
 		int len = buf.length;
 		int bufPos = 0;
 		do {

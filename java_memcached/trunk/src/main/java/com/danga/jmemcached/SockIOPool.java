@@ -45,7 +45,6 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.CRC32;
 
-import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -1290,7 +1289,7 @@ public class SockIOPool {
 	 * This is typically called by the maintenance thread to manage pool size.
 	 */
 	protected void selfMaint() {
-		log.debug( "++++ Starting self maintenance...." );
+		log.trace("Starting self maintenance....");
 
 		// go through avail sockets and create sockets
 		// as needed to maintain pool settings
@@ -1300,13 +1299,13 @@ public class SockIOPool {
 		for ( Iterator<String> i = availPool.keySet().iterator(); i.hasNext(); ) {
 			String host              = i.next();
 			Map<SockIO,Long> sockets = availPool.get( host );
-			log.debug( "++++ Size of avail pool for host (" + host + ") = " + sockets.size() );
+			log.trace("Size of avail pool for host (" + host + ") = " + sockets.size());
 
 			// if pool is too small (n < minSpare)
 			if ( sockets.size() < minConn ) {
 				// need to create new sockets
 				int need = minConn - sockets.size();
-				log.debug( "++++ Need to create " + need + " new sockets for pool for host: " + host );
+				log.debug("Need to create " + need + " new sockets for pool for host: " + host);
 
 				Set<SockIO> newSock = new HashSet<SockIO>( need );
 				for ( int j = 0; j < need; j++ ) {
@@ -1339,7 +1338,7 @@ public class SockIOPool {
 			for ( Iterator<String> i = availPool.keySet().iterator(); i.hasNext(); ) {
 				String host              = i.next();
 				Map<SockIO,Long> sockets = availPool.get( host );
-				log.debug( "++++ Size of avail pool for host (" + host + ") = " + sockets.size() );
+				log.trace("Size of avail pool for host (" + host + ") = " + sockets.size());
 
 				if ( sockets.size() > maxConn ) {
 					// need to close down some sockets
@@ -1348,7 +1347,8 @@ public class SockIOPool {
 						? diff
 						: (diff) / poolMultiplier;
 
-					log.debug( "++++ need to remove " + needToClose + " spare sockets for pool for host: " + host );
+					log.debug("Need to remove " + needToClose + " spare sockets for pool for host: " + host);
+					
 					for ( Iterator<SockIO> j = sockets.keySet().iterator(); j.hasNext(); ) {
 						if ( needToClose <= 0 )
 							break;
@@ -1361,11 +1361,11 @@ public class SockIOPool {
 						// then close socket
 						// and remove from pool
 						if ( (expire + maxIdle) < System.currentTimeMillis() ) {
-							log.debug( "+++ removing stale entry from pool as it is past its idle timeout and pool is over max spare" );
+							log.trace("Removing stale entry from pool as it is past its idle timeout and pool is over max spare" );
 
 							if ( socket.isConnected() ) {
 								// add to busy pool
-								log.debug( "++++ moving socket for host (" + host + ") to busy pool ... socket: " + socket );
+								log.debug("Moving socket for host (" + host + ") to busy pool ... socket: " + socket );
 								addSocketToPool( busyPool, host, socket );
 							}
 							else {
@@ -1388,7 +1388,7 @@ public class SockIOPool {
 				String host              = i.next();
 				Map<SockIO,Long> sockets = busyPool.get( host );
 
-				log.debug( "++++ Size of busy pool for host (" + host + ")  = " + sockets.size() );
+				log.trace( "++++ Size of busy pool for host (" + host + ")  = " + sockets.size() );
 
 				// loop through all connections and check to see if we have any hung connections
 				for ( Iterator<SockIO> j = sockets.keySet().iterator(); j.hasNext(); ) {
@@ -1404,7 +1404,7 @@ public class SockIOPool {
 
 						if ( socket.isConnected() ) {
 							// add to busy pool
-							log.debug( "++++ moving socket for host (" + host + ") to busy pool ... socket: " + socket );
+							log.debug("++++ moving socket for host (" + host + ") to busy pool ... socket: " + socket );
 							addSocketToPool( busyPool, host, socket );
 						}
 						else {
@@ -1438,7 +1438,7 @@ public class SockIOPool {
 			socket = null;
 		}
 
-		log.debug( "+++ ending self maintenance." );
+		log.trace( "+++ ending self maintenance." );
 	}
 
 	protected static Document loadConfiguration() {
