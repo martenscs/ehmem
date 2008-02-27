@@ -44,7 +44,7 @@ public class MemcachedStore implements Store {
      * @see net.sf.ehcache.store.Store#containsKey(java.lang.Object)
      */
     public boolean containsKey(Object key) {
-        return client.keyExists(key.toString());
+        return client.keyExists(generateKey(key));
     }
 
     /* (non-Javadoc)
@@ -125,7 +125,7 @@ public class MemcachedStore implements Store {
             log.trace("Put in cache value [" + element + "] with key [" + key + "]");
         }
         
-        client.add(generateKey(key), element);
+        client.set(generateKey(key), element);
     }
 
     /* (non-Javadoc)
