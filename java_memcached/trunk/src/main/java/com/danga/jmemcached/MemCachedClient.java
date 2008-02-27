@@ -42,6 +42,8 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.danga.jmemcached.util.StopTokenChecker;
+
 /**
  * This is a Java client for the memcached server available from
  *  <a href="http:/www.danga.com/memcached/">http://www.danga.com/memcached/</a>.
@@ -186,11 +188,6 @@ public class MemCachedClient {
 	private static final String ERROR        = "ERROR";			// invalid command name from client
 	private static final String CLIENT_ERROR = "CLIENT_ERROR";	// client error in input line - invalid protocol
 	private static final String SERVER_ERROR = "SERVER_ERROR";	// server error
-
-	private static final byte[] B_END        = "END\r\n".getBytes();
-	private static final byte[] B_NOTFOUND   = "NOT_FOUND\r\n".getBytes();
-	private static final byte[] B_DELETED    = "DELETED\r\r".getBytes();
-	private static final byte[] B_STORED     = "STORED\r\r".getBytes();
 
 	// default compression threshold
 	private static final int COMPRESS_THRESH = 30720;
@@ -435,22 +432,11 @@ public class MemCachedClient {
 	 * @return <code>true</code>, if the data was deleted successfully
 	 */
 	public boolean delete( String key, Integer hashCode, Date expiry ) {
+        key = sanitizeKey(key);
 
-		if ( key == null ) {
-			log.error( "null value for key passed to delete()" );
-			return false;
-		}
-
-		try {
-			key = sanitizeKey( key );
-		}
-		catch ( UnsupportedEncodingException e ) {
-
-			// if we have an errorHandler, use its hook
-			if ( errorHandler != null )
-				errorHandler.handleErrorOnDelete( this, e, key );
-
-			log.error( "failed to sanitize your key!", e );
+		if (key == null) {
+			log.error("Null value for key passed to delete()");
+			
 			return false;
 		}
 
@@ -692,18 +678,13 @@ public class MemCachedClient {
 			return false;
 		}
 
-		try {
-			key = sanitizeKey( key );
-		}
-		catch ( UnsupportedEncodingException e ) {
+        key = sanitizeKey( key );
 
-			// if we have an errorHandler, use its hook
-			if ( errorHandler != null )
-				errorHandler.handleErrorOnSet( this, e, key );
-
-			log.error( "failed to sanitize your key!", e );
-			return false;
-		}
+        if (key == null) {
+            log.error("Null value for key passed to set()");
+            
+            return false;
+        }
 
 		if ( value == null ) {
 			log.error( "trying to store a null value to cache" );
@@ -1116,22 +1097,11 @@ public class MemCachedClient {
 	 * @return new value or -1 if not exist
 	 */
 	private long incrdecr( String cmdname, String key, long inc, Integer hashCode ) {
+        key = sanitizeKey( key );
 
-		if ( key == null ) {
-			log.error( "null key for incrdecr()" );
-			return -1;
-		}
-
-		try {
-			key = sanitizeKey( key );
-		}
-		catch ( UnsupportedEncodingException e ) {
-
-			// if we have an errorHandler, use its hook
-			if ( errorHandler != null )
-				errorHandler.handleErrorOnGet( this, e, key );
-
-			log.error( "failed to sanitize your key!", e );
+		if (key == null) {
+			log.error("Null key for incrdecr()");
+			
 			return -1;
 		}
 
@@ -1254,22 +1224,10 @@ public class MemCachedClient {
 	 * @return the object that was previously stored, or null if it was not previously stored
 	 */
 	public Object get( String key, Integer hashCode, boolean asString ) {
+        key = sanitizeKey( key );
 
-		if ( key == null ) {
-			log.error( "key is null for get()" );
-			return null;
-		}
-
-		try {
-			key = sanitizeKey( key );
-		}
-		catch ( UnsupportedEncodingException e ) {
-
-			// if we have an errorHandler, use its hook
-			if ( errorHandler != null )
-				errorHandler.handleErrorOnGet( this, e, key );
-
-			log.error( "failed to sanitize your key!", e );
+		if (key == null) {
+			log.error("Key is null for get()");
 			return null;
 		}
 
@@ -1409,10 +1367,10 @@ public class MemCachedClient {
 			new HashMap<String,StringBuilder>();
 
 		for ( int i = 0; i < keys.length; ++i ) {
-
-			String key = keys[i];
-			if ( key == null ) {
-				log.error( "null key, so skipping" );
+			String key = sanitizeKey(keys[i]);
+			
+			if (key == null) {
+				log.warn("Null key for getMulti");
 				continue;
 			}
 
@@ -1420,25 +1378,11 @@ public class MemCachedClient {
 			if ( hashCodes != null && hashCodes.length > i )
 				hash = hashCodes[ i ];
 
-			String cleanKey = key;
-			try {
-				cleanKey = sanitizeKey( key );
-			}
-			catch ( UnsupportedEncodingException e ) {
-
-				// if we have an errorHandler, use its hook
-				if ( errorHandler != null )
-					errorHandler.handleErrorOnGet( this, e, key );
-
-				log.error( "failed to sanitize your key!", e );
-				continue;
-			}
-
 			// get SockIO obj from cache key
 			if ( pool == null )
 				pool = SockIOPool.getInstance( poolName );
 
-			SockIOPool.SockIO sock = pool.getSock( cleanKey, hash );
+			SockIOPool.SockIO sock = pool.getSock(key, hash );
 
 			if ( sock == null )
 				continue;
@@ -1447,7 +1391,7 @@ public class MemCachedClient {
 			if ( !cmdMap.containsKey( sock.getHost() ) )
 				cmdMap.put( sock.getHost(), new StringBuilder( "get" ) );
 
-			cmdMap.get( sock.getHost() ).append( " " + cleanKey );
+			cmdMap.get(sock.getHost()).append(" " + key);
 
 			// return to pool
 			sock.close();
@@ -1456,26 +1400,16 @@ public class MemCachedClient {
 		log.info( "multi get socket count : " + cmdMap.size() );
 
 		// now query memcache
-		Map<String,Object> ret =
-			new HashMap<String,Object>( keys.length );
+		Map<String,Object> ret = new HashMap<String,Object>(keys.length);
 
 		// now use new NIO implementation
-		(new NIOLoader()).doMulti( asString, cmdMap, keys, ret );
+		(new NIOLoader()).doMulti(asString, cmdMap, keys, ret);
 
 		// fix the return array in case we had to rewrite any of the keys
 		for ( String key : keys ) {
-
-			String cleanKey = key;
-			try {
-				cleanKey = sanitizeKey( key );
-			}
-			catch ( UnsupportedEncodingException e ) {
-
-				// if we have an errorHandler, use its hook
-				if ( errorHandler != null )
-					errorHandler.handleErrorOnGet( this, e, key );
-
-				log.error( "failed to sanitize your key!", e );
+	        String cleanKey = sanitizeKey(key);
+	        
+	        if (cleanKey == null) {
 				continue;
 			}
 
@@ -1489,7 +1423,8 @@ public class MemCachedClient {
 				ret.put( key, null );
 		}
 
-		log.debug( "++++ memcache: got back " + ret.size() + " results" );
+		log.debug("memcache: got back " + ret.size() + " results");
+		
 		return ret;
 	}
 
@@ -1611,8 +1546,28 @@ public class MemCachedClient {
 		}
 	}
 
-	private String sanitizeKey( String key ) throws UnsupportedEncodingException {
-		return ( sanitizeKeys ) ? URLEncoder.encode( key, "UTF-8" ) : key;
+	private String sanitizeKey(String key) {
+	    if (key == null) {
+	        return null;
+	    }
+	    
+	    String result = null;
+	    
+	    try {
+            String newKey = (sanitizeKeys) ? URLEncoder.encode(key, "UTF-8") : key;
+
+            if (newKey.length() > 250) {
+                log.error("Sanitized key [" + newKey + "] could not be more that 250 chars");
+                
+                return null;
+            }
+            
+            result = newKey;
+        } catch (UnsupportedEncodingException e) {
+            log.error("Failed to sanitize your key", e);
+        }
+		
+        return result;
 	}
 
 	/**
@@ -1934,7 +1889,6 @@ public class MemCachedClient {
 		protected Connection[] conns;
 
 		private final class Connection {
-
 			public List<ByteBuffer> incoming = new ArrayList<ByteBuffer>();
 			public ByteBuffer outgoing;
 			public SockIOPool.SockIO sock;
@@ -1980,47 +1934,36 @@ public class MemCachedClient {
 
 			public boolean isDone() {
 				// if we know we're done, just say so
-				if ( isDone )
+				if (isDone) {
 					return true;
-
-				// else find out the hard way
-				int maxBuf = incoming.size()-1;
-				int strPos = B_END.length-1;
-
-				// Need to check if last bytes are:
-				//   - END\r\n
-				//   - NOT_FOUND\r\n
-				//   - DELETED\r\n
-
-				int bi = maxBuf;
-				while ( bi >= 0 && strPos >= 0 ) {
-					ByteBuffer buf = incoming.get( bi );
-					int pos = buf.position()-1;
-					while ( pos >= 0 && strPos >= 0 ) {
-					    if ( buf.get( pos-- ) != B_END[strPos--] )
-							return false;
-					}
-
-					bi--;
 				}
+				
+				// else find out the hard way
+				ByteBuffer buf = incoming.get(incoming.size() - 1);
 
-				isDone = strPos < 0;
-				return isDone;
+                if (StopTokenChecker.startWithToken(buf)) {
+                    isDone = true;
+                } else if (StopTokenChecker.finishWithToken(buf)) {
+                    isDone = true;
+                }
+
+                return isDone;
 			}
 
 			public ByteBuffer getBuffer() {
-				int last = incoming.size()-1;
-				if ( last >= 0 && incoming.get( last ).hasRemaining() ) {
-					return incoming.get( last );
-				}
-				else {
-					ByteBuffer newBuf = ByteBuffer.allocate( 8192 );
-					incoming.add( newBuf );
+				int last = incoming.size() - 1;
+				
+				if ( last >= 0 && incoming.get(last).hasRemaining() ) {
+					return incoming.get(last);
+				} else {
+					ByteBuffer newBuf = ByteBuffer.allocate(8192);
+					incoming.add(newBuf);
 					return newBuf;
 				}
 			}
 
-			public String toString() {
+			@Override
+            public String toString() {
 				return "Connection to " + sock.getHost() + " with " + incoming.size() + " bufs; done is " + isDone;
 			}
 		}
@@ -2071,19 +2014,17 @@ public class MemCachedClient {
 					else {
 					    // timeout likely... better check
 						// TODO:  This seems like a problem area that we need to figure out how to handle.
-						log.error( "selector timed out waiting for activity" );
+						log.error("selector timed out waiting for activity");
 					}
 
 					timeRemaining = timeout - (System.currentTimeMillis() - startTime);
 				}
-			}
-			catch ( IOException e ) {
+			} catch ( IOException e ) {
 				// errors can happen just about anywhere above, from
 				// connection setup to any of the mechanics
 				handleError( e, keys );
 				return;
-			}
-			finally {
+			} finally {
 				if ( log.isDebugEnabled() )
 					log.debug( "Disconnecting; numConns=" + numConns + "  timeRemaining=" + timeRemaining );
 
@@ -2108,14 +2049,13 @@ public class MemCachedClient {
 			// Done!  Build the list of results and return them.  If we get
 			// here by a timeout, then some of the connections are probably
 			// not done.  But we'll return what we've got...
-			for ( Connection c : conns ) {
+			for (Connection c : conns) {
 				try {
-					if ( c.incoming.size() > 0 && c.isDone() )
-						loadMulti( new ByteBufArrayInputStream( c.incoming ), ret, asString );
-				}
-				catch ( Exception e ) {
-					// shouldn't happen; we have all the data already
-					log.warn( "Caught the aforementioned exception on "+c );
+					if ((c.incoming.size() > 0) && (c.isDone())) {
+						loadMulti(new ByteBufArrayInputStream(c.incoming), ret, asString);
+					}
+				} catch (Exception e) {
+					log.warn("Caught the exception for connection [" + c + "]", e);
 				}
 			}
 		}
@@ -2126,8 +2066,7 @@ public class MemCachedClient {
 		        errorHandler.handleErrorOnGet( MemCachedClient.this, e, keys );
 
 		    // exception thrown
-		    log.error( "++++ exception thrown while getting from cache on getMulti" );
-		    log.error( e.getMessage() );
+		    log.error("Exception thrown while getting from cache on getMulti", e);
 		}
 
 		private void handleKey( SelectionKey key ) throws IOException {
@@ -2140,38 +2079,45 @@ public class MemCachedClient {
 				writeRequest( key );
 		}
 
-		public void writeRequest( SelectionKey key ) throws IOException {
+		public void writeRequest(SelectionKey key) throws IOException {
 			ByteBuffer buf = ((Connection) key.attachment()).outgoing;
 			SocketChannel sc = (SocketChannel)key.channel();
+			InetAddress inetAddress = ((SocketChannel) key.channel()).socket().getInetAddress();
 
 			if ( buf.hasRemaining() ) {
-				if ( log.isDebugEnabled() )
-				    log.debug( "writing " + buf.remaining() + "B to " + ((SocketChannel) key.channel()).socket().getInetAddress() );
+				if (log.isDebugEnabled()) {
+                    log.debug("Writing " + buf.remaining() + " bytes to " + inetAddress);
+				}
 
-				sc.write( buf );
+				sc.write(buf);
 			}
 
-			if ( !buf.hasRemaining() ) {
-			    if ( log.isDebugEnabled() )
-			        log.debug( "switching to read mode for server " + ((SocketChannel)key.channel()).socket().getInetAddress() );
-
-				key.interestOps( SelectionKey.OP_READ );
+			if (!buf.hasRemaining()) {
+			    if (log.isDebugEnabled()) {
+			        log.debug("Switching to read mode for server " + inetAddress);
+			    }
+			    
+				key.interestOps(SelectionKey.OP_READ);
 			}
 		}
 
-		public void readResponse( SelectionKey key ) throws IOException {
+		public void readResponse(SelectionKey key) throws IOException {
 			Connection conn = (Connection)key.attachment();
 			InetAddress remote = conn.channel.socket().getInetAddress();
 
 			ByteBuffer buf = conn.getBuffer();
 			int count = conn.channel.read( buf );
-			if ( count > 0 ) {
-				if ( log.isDebugEnabled() )
-					log.debug( "read  " + count + " from " + remote );
-
-				if ( conn.isDone() ) {
-					log.debug( "connection done to  " + remote );
+			
+			if (count > 0) {
+				if (log.isDebugEnabled()) {
+					log.debug("Read " + count + " bytes from " + remote);
+				}
+				
+				if (conn.isDone()) {
+					log.debug("Connection done to " + remote);
+					
 					numConns--;
+					
 					return;
 				}
 			}

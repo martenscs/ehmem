@@ -20,14 +20,12 @@ import com.danga.jmemcached.MemCachedClient;
 public class MemcachedStore implements Store {
     private static final Log log = LogFactory.getLog(MemcachedStore.class);
 
-    private final Ehcache cache;
     private Status status;
     private final MemCachedClient client;
 
     public MemcachedStore(Ehcache cache) {
         this.status = Status.STATUS_UNINITIALISED;
 
-        this.cache = cache;
         this.client = new MemCachedClient();
 
         this.status = Status.STATUS_ALIVE;
@@ -74,7 +72,11 @@ public class MemcachedStore implements Store {
      * @see net.sf.ehcache.store.Store#get(java.lang.Object)
      */
     public Element get(Object key) {
-        return (Element) client.get(key.toString());
+        if (log.isTraceEnabled()) {
+            log.trace("Get element with key [" + key.toString() + "]");
+        }
+        
+        return (Element) client.get(generateKey(key));
     }
 
     /* (non-Javadoc)
@@ -90,7 +92,11 @@ public class MemcachedStore implements Store {
      * @see net.sf.ehcache.store.Store#getQuiet(java.lang.Object)
      */
     public Element getQuiet(Object key) {
-        return (Element) client.get(key.toString());
+        if (log.isTraceEnabled()) {
+            log.trace("Quietly get element with key [" + key + "]");
+        }
+
+        return (Element) client.get(generateKey(key));
     }
 
     /* (non-Javadoc)
@@ -113,14 +119,24 @@ public class MemcachedStore implements Store {
      * @see net.sf.ehcache.store.Store#put(net.sf.ehcache.Element)
      */
     public void put(Element element) throws CacheException {
-        client.add(element.getKey().toString(), element);
+        Object key = element.getKey();
+
+        if (log.isTraceEnabled()) {
+            log.trace("Put in cache value [" + element + "] with key [" + key + "]");
+        }
+        
+        client.add(generateKey(key), element);
     }
 
     /* (non-Javadoc)
      * @see net.sf.ehcache.store.Store#remove(java.lang.Object)
      */
     public Element remove(Object key) {
-        client.delete(key.toString());
+        if (log.isTraceEnabled()) {
+            log.trace("Removing key [" + key + "] from cache");
+        }
+
+        client.delete(generateKey(key));
 
         return null;
     }
@@ -132,5 +148,20 @@ public class MemcachedStore implements Store {
         log.error("'Remove All' for memcached is not supported");
 
         throw new UnsupportedOperationException("Remove all is not supported");
+    }
+    
+    /**
+     * In current implementation we just emulating default toString 
+     * @param object
+     * @return
+     */
+    protected String generateKey(Object object) {
+        String key = null;
+        
+        if (object != null) {
+            key = object.getClass().getName() + "@" + Integer.toHexString(object.hashCode());
+        }
+
+        return key;
     }
 }
