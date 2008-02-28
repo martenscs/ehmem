@@ -43,5 +43,17 @@
         	<version>0.2-SNAPSHOT</version>
         	<scope>provided</scope>
 		</dependency>
+		<dependency>
+        	<groupId>org.hibernate</groupId>
+    		<artifactId>hibernate</artifactId>
+        	<version>3.2.5.ga</version>
+        	<scope>provided</scope>
+        	<exclusions>
+        		<exclusion>
+        			<groupId>net.sf.ehcache</groupId>
+        			<artifactId>ehcache</artifactId>
+        		</exclusion>
+        	</exclusions>
+		</dependency>
 	</dependencies>
 </project>

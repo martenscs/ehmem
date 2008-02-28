@@ -1222,7 +1222,7 @@ public class SockIOPool {
 	 */
 	public void shutDown() {
 		synchronized( this ) {
-			log.debug( "++++ SockIOPool shutting down..." );
+			log.debug("SockIOPool shutting down...");
 
 			if ( maintThread != null && maintThread.isRunning() ) {
 				// stop the main thread

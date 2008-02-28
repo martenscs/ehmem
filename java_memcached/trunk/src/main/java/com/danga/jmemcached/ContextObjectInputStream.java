@@ -24,12 +24,12 @@
  */
 package com.danga.jmemcached;
 
-import java.util.*;
-import java.util.zip.*;
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamClass;
 
 public class ContextObjectInputStream extends ObjectInputStream { 
-
 	ClassLoader mLoader;
     
 	public ContextObjectInputStream( InputStream in, ClassLoader loader ) throws IOException, SecurityException {
@@ -37,7 +37,8 @@ public class ContextObjectInputStream extends ObjectInputStream {
 		mLoader = loader;
 	}
 	
-	protected Class resolveClass( ObjectStreamClass v ) throws IOException, ClassNotFoundException {
+	@Override
+    protected Class resolveClass( ObjectStreamClass v ) throws IOException, ClassNotFoundException {
 		if ( mLoader == null )
 			return super.resolveClass( v );
 		else

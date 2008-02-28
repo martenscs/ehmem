@@ -385,8 +385,16 @@ public class MemCachedClient {
 	public void setCompressThreshold( long compressThreshold ) {
 		this.compressThreshold = compressThreshold;
 	}
-
+	 
 	/**
+     * Get assigned pool.
+     * @return the pool
+     */
+    public SockIOPool getPool() {
+        return pool;
+    }
+
+    /**
 	 * Checks to see if key exists in cache.
 	 *
 	 * @param key the key to look for
@@ -1519,13 +1527,12 @@ public class MemCachedClient {
 				}
 				else {
 					// deserialize if the data is serialized
-					ContextObjectInputStream ois =
-						new ContextObjectInputStream( new ByteArrayInputStream( buf ), classLoader );
+					ContextObjectInputStream ois = new ContextObjectInputStream( new ByteArrayInputStream( buf ), classLoader );
+					
 					try {
 						o = ois.readObject();
 						log.info( "++++ deserializing " + o.getClass() );
-					}
-					catch ( ClassNotFoundException e ) {
+					} catch ( ClassNotFoundException e ) {
 
 						// if we have an errorHandler, use its hook
 						if ( errorHandler != null )
@@ -1533,14 +1540,15 @@ public class MemCachedClient {
 
 						log.error( "++++ ClassNotFoundException thrown while trying to deserialize for key: " + key, e );
 						throw new NestedIOException( "+++ failed while trying to deserialize for key: " + key, e );
+					} finally {
+					    ois.close();
 					}
 				}
 
 				// store the object into the cache
 				hm.put( key, o );
-			}
-			else if ( END.equals( line ) ) {
-				log.debug( "++++ finished reading from cache server" );
+			} else if (END.equals(line) ) {
+				log.debug("++++ finished reading from cache server");
 				break;
 			}
 		}
