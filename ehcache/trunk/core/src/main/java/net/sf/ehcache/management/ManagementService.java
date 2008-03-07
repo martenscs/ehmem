@@ -126,8 +126,10 @@ public final class ManagementService implements CacheManagerEventListener {
         CacheManager cacheManager = new CacheManager(backingCacheManager);
         try {
             registerCacheManager(cacheManager);
+            registerCacheGraphicsIfRequired(cacheManager);
 
             List caches = cacheManager.getCaches();
+            
             for (int i = 0; i < caches.size(); i++) {
                 Cache cache = (Cache) caches.get(i);
                 registerCachesIfRequired(cache);
@@ -168,6 +170,16 @@ public final class ManagementService implements CacheManagerEventListener {
             MBeanRegistrationException, NotCompliantMBeanException {
         if (registerCaches) {
             mBeanServer.registerMBean(cache, cache.getObjectName());
+        }
+    }
+
+    private void registerCacheGraphicsIfRequired(
+            CacheManager manager
+    ) throws InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+        if (registerCacheStatistics) {
+            CacheGraphics graphics = new CacheGraphics(manager);
+
+            mBeanServer.registerMBean(graphics, graphics.getObjectName());
         }
     }
 
