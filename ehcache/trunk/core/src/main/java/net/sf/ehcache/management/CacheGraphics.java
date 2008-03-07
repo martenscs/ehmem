@@ -1,9 +1,6 @@
 package net.sf.ehcache.management;
 
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.Map.Entry;
+import java.util.Arrays;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -16,13 +13,27 @@ import javax.management.MBeanInfo;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.ReflectionException;
+
 import net.sf.ehcache.CacheException;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * @author <A href="mailto:abashev at gmail dot com">Alexey Abashev</A>
  * @version $Id$
  */
 public class CacheGraphics implements DynamicMBean {
+    private static final char STOP_CHAR = '|';
+    private static final char FILL_CHAR = '#';
+    private static final char EMPTY_CHAR = '_';
+    private static final int BAR_LENGTH = 20;
+
+    private static final String EMPTY = "empty";
+    private static final String MAX_NOT_SPECIFIED = "Max is not specified";
+
+    private final Log log = LogFactory.getLog(CacheGraphics.class);
+
     private CacheManager cacheManager;
     private ObjectName objectName;
     
@@ -42,27 +53,34 @@ public class CacheGraphics implements DynamicMBean {
      * @see javax.management.DynamicMBean#getAttribute(java.lang.String)
      */
     public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
-        return "valie";
+        Cache cache = cacheManager.getCache(attribute);
+        
+        if (cache == null) {
+            throw new AttributeNotFoundException();
+        }
+        
+        return generateBar(
+                cache.getStatistics().getObjectCount(),
+                cache.getCacheConfiguration().getMaxElementsInMemory()
+        );
     }
 
     /* (non-Javadoc)
      * @see javax.management.DynamicMBean#getAttributes(java.lang.String[])
      */
     public AttributeList getAttributes(String[] attributes) {
-        @SuppressWarnings("unchecked")
-        List<Cache> caches = cacheManager.getCaches();
-        Map<String, String> bars = new TreeMap<String, String>();
-        
-        for (Cache cache : caches) {
-            final String bar = generateBar();
-            
-            bars.put(cache.getName(), bar);
-        }
-
         AttributeList list = new AttributeList();
         
-        for (Entry<String, String> entry : bars.entrySet()) {
-            list.add(new Attribute(entry.getKey(), entry.getValue()));
+        for (String name : attributes) {
+            try {
+                list.add(new Attribute(name, getAttribute(name)));
+            } catch (AttributeNotFoundException e) {
+                log.error("Unable to load attribute value for \"" + name + "\"", e);
+            } catch (MBeanException e) {
+                log.error("Unable to load attribute value for \"" + name + "\"", e);
+            } catch (ReflectionException e) {
+                log.error("Unable to load attribute value for \"" + name + "\"", e);
+            }
         }
     
         return list;    
@@ -74,6 +92,9 @@ public class CacheGraphics implements DynamicMBean {
     
     public MBeanInfo getMBeanInfo() {
         String[] caches = cacheManager.getCacheNames();
+        
+        Arrays.sort(caches);
+        
         MBeanAttributeInfo[] attrs = new MBeanAttributeInfo[caches.length];
         
         for (int i = 0; i < caches.length; i++) {
@@ -81,9 +102,7 @@ public class CacheGraphics implements DynamicMBean {
                     caches[i],
                     "java.lang.String",
                     "Property " + caches[i],
-                    true,
-                    false,
-                    false
+                    true, false, false
             );
         }
         
@@ -125,7 +144,29 @@ public class CacheGraphics implements DynamicMBean {
         return objectName;
     }
     
-    protected String generateBar() {
-        return "|####_____|";
+    protected String generateBar(long amount, long max) {
+        if (amount == 0) {
+            return EMPTY;
+        }
+
+        if (max == 0) {
+            return MAX_NOT_SPECIFIED;
+        }
+
+        int len = (int) ((amount * BAR_LENGTH) / max);  
+        StringBuilder sb = new StringBuilder();
+        
+        sb.append(STOP_CHAR);
+        
+        for (int i = 0; i < BAR_LENGTH; i++) {
+            sb.append((i < len) ? FILL_CHAR : EMPTY_CHAR);
+        }
+        
+        sb.append(STOP_CHAR);
+        
+        // Calculate percent
+        sb.append(String.format(" %3d%%", (int) ((amount * 100) / max)));
+        
+        return sb.toString();
     }
 }
