@@ -52,6 +52,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
+import static com.danga.jmemcached.PoolConfigurationWrapper.INIT_CONNECTIONS;
+import static com.danga.jmemcached.PoolConfigurationWrapper.MAX_CONNECTIONS;
+import static com.danga.jmemcached.PoolConfigurationWrapper.MIN_CONNECTIONS;
+import static com.danga.jmemcached.PoolConfigurationWrapper.MAX_IDLE;
+import static com.danga.jmemcached.PoolConfigurationWrapper.MAINT_SLEEP;
+import static com.danga.jmemcached.PoolConfigurationWrapper.NAGLE;
+import static com.danga.jmemcached.PoolConfigurationWrapper.SOCKET_TIMEOUT;
+import static com.danga.jmemcached.PoolConfigurationWrapper.SOCKET_CONNECT_TIMEOUT;
 
 /**
  * This class is a connection pool for maintaning a pool of persistent connections<br/>
@@ -1475,23 +1483,79 @@ public class SockIOPool {
     }
 
 	protected static void initPool(SockIOPool pool, PoolConfigurationWrapper wrapper) {
-	    pool.setServers(wrapper.getServers());
-	    pool.setWeights(wrapper.getWeights());
+	    final String prefix = "SockIOPool [" + wrapper.getPoolName() + "]: ";
+	    
+	    final String[] s = wrapper.getServers();
+        final Integer[] w = wrapper.getWeights();
+	    
+	    log.info(prefix + "Set server list " + Arrays.toString(s) + " with weights " + Arrays.toString(w));
 
-	    pool.setInitConn(wrapper.getInitConnections());
-	    pool.setMinConn(wrapper.getMinConnections());
-	    pool.setMaxConn(wrapper.getMaxConnections());
-	    pool.setMaxIdle(wrapper.getMaxIdle());
+	    pool.setServers(s);
+        pool.setWeights(w);
+	    
+	    if (wrapper.hasParameter(INIT_CONNECTIONS)) {
+	        final int p = wrapper.getParameter(INIT_CONNECTIONS, Integer.class);
+	        
+	        log.info(prefix + "Set init connections: " + p);
+	        
+            pool.setInitConn(p);
+	    }
 
-	    // set the sleep for the maint thread
-	    // it will wake up every x seconds and
-	    // maintain the pool size
-	    pool.setMaintSleep(wrapper.getMaintSleep());
+	    if (wrapper.hasParameter(MAX_CONNECTIONS)) {
+            final Integer p = wrapper.getParameter(MAX_CONNECTIONS, Integer.class);
 
-	    // set some TCP settings
-	    pool.setNagle(wrapper.getNagle());
-	    pool.setSocketTO(wrapper.getSocketTO());
-	    pool.setSocketConnectTO(wrapper.getSocketConnectTO());
+            log.info(prefix + "Set max connections: " + p);
+
+            pool.setMaxConn(p);
+	    }
+
+	    if (wrapper.hasParameter(MIN_CONNECTIONS)) {
+            final Integer p = wrapper.getParameter(MIN_CONNECTIONS, Integer.class);
+
+            log.info(prefix + "Set min connections: " + p);
+
+            pool.setMinConn(p);
+	    }
+
+	    if (wrapper.hasParameter(MAX_IDLE)) {
+	        final Long p = wrapper.getParameter(MAX_IDLE, Long.class);
+
+	        log.info(prefix + "Set max idle time: " + p + " ms");
+	        
+            pool.setMaxIdle(p);
+	    }
+
+	    if (wrapper.hasParameter(MAINT_SLEEP)) {
+	        final Long p = wrapper.getParameter(MAINT_SLEEP, Long.class);
+            
+	        log.info(prefix + "Set maint thread sleep time: " + p + " ms");
+
+            pool.setMaintSleep(p);
+	    }
+
+	    if (wrapper.hasParameter(NAGLE)) {
+	        final Boolean p = wrapper.getParameter(NAGLE, Boolean.class);
+
+	        log.info(prefix + "Is nagle: " + p);
+	        
+            pool.setNagle(p);
+	    }
+	    
+	    if (wrapper.hasParameter(SOCKET_TIMEOUT)) {
+	        final Integer p = wrapper.getParameter(SOCKET_TIMEOUT, Integer.class);
+
+	        log.info(prefix + "Socket timeout: " + p + " ms");
+
+            pool.setSocketTO(p);
+	    }
+
+	    if (wrapper.hasParameter(SOCKET_CONNECT_TIMEOUT)) {
+	        final Integer p = wrapper.getParameter(SOCKET_CONNECT_TIMEOUT, Integer.class);
+
+	        log.info(prefix + "Socket connect timeout: " + p + " ms");
+
+            pool.setSocketConnectTO(p);
+	    }
 	}
 
 	/**
@@ -1501,9 +1565,6 @@ public class SockIOPool {
 	 * @version 1.5
 	 */
 	protected static class MaintThread extends Thread {
-		// logger
-		private static Log log = LogFactory.getLog(MaintThread.class);
-
 		private SockIOPool pool;
 		private long interval      = 1000 * 3; // every 3 seconds
 		private boolean stopThread = false;
