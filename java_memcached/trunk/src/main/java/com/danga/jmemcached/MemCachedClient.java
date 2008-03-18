@@ -1248,18 +1248,18 @@ public class MemCachedClient {
 	    if ( sock == null )
 			return null;
 
-		Map<String,StringBuilder> cmdMap =
-			new HashMap<String,StringBuilder>();
-
-		cmdMap.put( sock.getHost(),
-				new StringBuilder( String.format( "get %s", key ) ) );
+		Map<String,StringBuilder> cmdMap = new HashMap<String,StringBuilder>();
+		StringBuilder sb = new StringBuilder(30);
+		
+		sb.append("get ").append(key);
+		
+		cmdMap.put(sock.getHost(),	sb);
 
 		sock.close();
 
 		// build empty map
 		// and fill it from server
-		Map<String,Object> hm =
-			new HashMap<String,Object>();
+		Map<String,Object> hm = new HashMap<String,Object>();
 		(new NIOLoader()).doMulti( asString, cmdMap, new String[] { key }, hm );
 
 		// return the value for this key if we found it
@@ -1451,7 +1451,10 @@ public class MemCachedClient {
 
 		while ( true ) {
 			String line = input.readLine();
-			log.debug( "++++ line: " + line );
+			
+			if (log.isDebugEnabled()) {
+			    log.debug("Line: " + line);
+			}
 
 			if ( line.startsWith( VALUE ) ) {
 				String[] info = line.split(" ");
@@ -1459,10 +1462,12 @@ public class MemCachedClient {
 				int flag      = Integer.parseInt( info[2] );
 				int length    = Integer.parseInt( info[3] );
 
-				log.debug( "++++ key: " + key );
-				log.debug( "++++ flags: " + flag );
-				log.debug( "++++ length: " + length );
-
+	            if (log.isDebugEnabled()) {
+	                log.debug( "++++ key: " + key );
+	                log.debug( "++++ flags: " + flag );
+	                log.debug( "++++ length: " + length );
+	            }
+	            
 				// read obj into buffer
 				byte[] buf = new byte[length];
 				input.read( buf );
@@ -1496,9 +1501,9 @@ public class MemCachedClient {
 						if ( errorHandler != null )
 							errorHandler.handleErrorOnGet( this, e, key );
 
-						log.error( "++++ IOException thrown while trying to uncompress input stream for key: " + key );
-						log.error( e.getMessage(), e );
-						throw new NestedIOException( "++++ IOException thrown while trying to uncompress input stream for key: " + key, e );
+						log.error("IOException thrown while trying to uncompress input stream for key: " + key, e);
+
+						throw new NestedIOException("IOException thrown while trying to uncompress input stream for key: " + key, e);
 					}
 				}
 
@@ -1506,16 +1511,17 @@ public class MemCachedClient {
 				if ( ( flag & F_SERIALIZED ) != F_SERIALIZED ) {
 					if ( primitiveAsString || asString ) {
 						// pulling out string value
-						log.info( "++++ retrieving object and stuffing into a string." );
+					    if (log.isInfoEnabled()) {
+					        log.info( "++++ retrieving object and stuffing into a string." );
+					    }
+					    
 						o = new String( buf, defaultEncoding );
 					}
 					else {
 						// decoding object
 						try {
 							o = NativeHandler.decode( buf, flag );
-						}
-						catch ( Exception e ) {
-
+						} catch ( Exception e ) {
 							// if we have an errorHandler, use its hook
 							if ( errorHandler != null )
 								errorHandler.handleErrorOnGet( this, e, key );
@@ -1531,7 +1537,10 @@ public class MemCachedClient {
 					
 					try {
 						o = ois.readObject();
-						log.info( "++++ deserializing " + o.getClass() );
+						
+						if (log.isInfoEnabled()) {
+						    log.info("Deserializing " + o.getClass());
+						}
 					} catch ( ClassNotFoundException e ) {
 
 						// if we have an errorHandler, use its hook
@@ -1548,7 +1557,10 @@ public class MemCachedClient {
 				// store the object into the cache
 				hm.put( key, o );
 			} else if (END.equals(line) ) {
-				log.debug("++++ finished reading from cache server");
+			    if (log.isDebugEnabled()) {
+			        log.debug("++++ finished reading from cache server");
+			    }
+			    
 				break;
 			}
 		}
