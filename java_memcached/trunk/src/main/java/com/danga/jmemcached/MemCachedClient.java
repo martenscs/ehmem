@@ -42,6 +42,7 @@ import java.util.zip.GZIPOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.danga.jmemcached.management.JMXHelper;
 import com.danga.jmemcached.util.StopTokenChecker;
 
 /**
@@ -306,6 +307,10 @@ public class MemCachedClient {
 		if (!this.pool.isInitialized()) {
 		    this.pool.initialize();
 		}
+		
+		this.pool.incReferenceCounter();
+		
+		JMXHelper.registerClient(this);
 	}
 
 	/**
@@ -723,28 +728,31 @@ public class MemCachedClient {
 				// useful for sharing data between java and non-java
 				// and also for storing ints for the increment method
 				try {
-					log.info( "++++ storing data as a string for key: " + key + " for class: " + value.getClass().getName() );
+					if (log.isInfoEnabled()) {
+					    log.info("Storing data as a string for key: " + key + " for class: " + value.getClass().getName() );
+					}
+					
 					val = value.toString().getBytes( defaultEncoding );
-				}
-				catch ( UnsupportedEncodingException ue ) {
+				} catch ( UnsupportedEncodingException ue ) {
 
 					// if we have an errorHandler, use its hook
 					if ( errorHandler != null )
 						errorHandler.handleErrorOnSet( this, ue, key );
 
-					log.error( "invalid encoding type used: " + defaultEncoding, ue );
+					log.error("Invalid encoding type used: " + defaultEncoding, ue );
 					sock.close();
 					sock = null;
 					return false;
 				}
-			}
-			else {
+			} else {
 				try {
-					log.info( "Storing with native handler..." );
+				    if (log.isInfoEnabled()) {
+				        log.info( "Storing with native handler..." );
+				    }
+				    
 					flags |= NativeHandler.getMarkerFlag( value );
 					val    = NativeHandler.encode( value );
-				}
-				catch ( Exception e ) {
+				} catch ( Exception e ) {
 
 					// if we have an errorHandler, use its hook
 					if ( errorHandler != null )
@@ -757,31 +765,51 @@ public class MemCachedClient {
 					return false;
 				}
 			}
-		}
-		else {
+		} else {
 			// always serialize for non-primitive types
-			try {
-				log.info( "++++ serializing for key: " + key + " for class: " + value.getClass().getName() );
-				ByteArrayOutputStream bos = new ByteArrayOutputStream();
-				(new ObjectOutputStream( bos )).writeObject( value );
-				val = bos.toByteArray();
-				flags |= F_SERIALIZED;
-			}
-			catch ( IOException e ) {
+            ByteArrayOutputStream bos = null;
 
+		    try {
+			    if (log.isInfoEnabled()) {
+			        log.info("Serializing key: " + key + " for class: " + value.getClass().getName());
+			    }
+			    
+				bos = new ByteArrayOutputStream();
+	            ObjectOutputStream oos = null;
+	            
+	            try {
+	                oos = new ObjectOutputStream(bos); 
+				    oos.writeObject(value);
+	            } finally {
+	                if (oos != null) {
+	                    oos.close();
+	                }
+	            }
+
+				val = bos.toByteArray();
+
+				flags |= F_SERIALIZED;
+			} catch (IOException e) {
 				// if we have an errorHandler, use its hook
 				if ( errorHandler != null )
 					errorHandler.handleErrorOnSet( this, e, key );
 
 				// if we fail to serialize, then
 				// we bail
-				log.error( "failed to serialize obj", e );
-				log.error( value.toString() );
+				log.error("Failed to serialize value [" + value + "] for key " + key, e);
 
 				// return socket to pool and bail
 				sock.close();
 				sock = null;
+
 				return false;
+			} finally {
+			    if (bos != null) {
+			        try {
+                        bos.close();
+                    } catch (IOException e) {
+                    }
+			    }
 			}
 		}
 
@@ -802,8 +830,7 @@ public class MemCachedClient {
 				flags |= F_COMPRESSED;
 
 				log.info( "++++ compression succeeded, size after: " + val.length );
-			}
-			catch ( IOException e ) {
+			} catch (IOException e) {
 
 				// if we have an errorHandler, use its hook
 				if ( errorHandler != null )
@@ -824,37 +851,42 @@ public class MemCachedClient {
 
 			// get result code
 			String line = sock.readLine();
-			log.info( "++++ memcache cmd (result code): " + cmd + " (" + line + ")" );
+			if (log.isInfoEnabled()) {
+			    log.info("Memcache cmd (result code): " + cmd + " (" + line + ")" );
+			}
 
-			if ( STORED.equals( line ) ) {
-				log.info("++++ data successfully stored for key: " + key );
-				sock.close();
+			if (STORED.equals(line)) {
+	            if (log.isInfoEnabled()) {
+	                log.info("Data successfully stored for key: " + key);
+	            }
+	            
+			    sock.close();
 				sock = null;
 				return true;
+			} else if (NOTSTORED.equals(line)) {
+                if (log.isInfoEnabled()) {
+                    log.info("Data not stored in cache for key: " + key);
+                }
+			} else {
+				log.error(
+				        String.format(
+				                "Error storing data in cache for {key: %s; length: %d; response: %s}",
+				                key, val.length, line 
+				        )
+				);
 			}
-			else if ( NOTSTORED.equals( line ) ) {
-				log.info( "++++ data not stored in cache for key: " + key );
-			}
-			else {
-				log.error( "++++ error storing data in cache for key: " + key + " -- length: " + val.length );
-				log.error( "++++ server response: " + line );
-			}
-		}
-		catch ( IOException e ) {
-
+		} catch (IOException e) {
 			// if we have an errorHandler, use its hook
 			if ( errorHandler != null )
 				errorHandler.handleErrorOnSet( this, e, key );
 
 			// exception thrown
-			log.error( "++++ exception thrown while writing bytes to server on set" );
-			log.error( e.getMessage(), e );
+			log.error("Exception thrown while writing bytes to server on set", e);
 
 			try {
 				sock.trueClose();
-			}
-			catch ( IOException ioe ) {
-				log.error( "++++ failed to close socket : " + sock.toString() );
+			} catch ( IOException ioe ) {
+				log.error("Failed to close socket : " + sock.toString());
 			}
 
 			sock = null;
@@ -1846,21 +1878,24 @@ public class MemCachedClient {
 				Map<String,String> stats = new HashMap<String,String>();
 
 				// loop over results
-				while ( true ) {
+				while (true) {
 					String line = sock.readLine();
-					log.debug( "++++ line: " + line );
-
+					if (log.isDebugEnabled()) {
+					    log.debug("Line: " + line);
+					}
+					
 					if ( line.startsWith( lineStart ) ) {
 						String[] info = line.split( " ", 3 );
 						String key    = info[1];
 						String value  = info[2];
-
-						log.debug( "++++ key  : " + key );
-						log.debug( "++++ value: " + value );
+						
+						if (log.isDebugEnabled()) {
+						    log.debug("Key  : " + key );
+						    log.debug("Value: " + value );
+						}
 
 						stats.put( key, value );
-					}
-					else if ( END.equals( line ) ) {
+					} else if (END.equals(line)) {
 						// finish when we get end from server
 						log.debug( "++++ finished reading from cache server" );
 						break;
@@ -1881,28 +1916,41 @@ public class MemCachedClient {
 					errorHandler.handleErrorOnStats( this, e );
 
 				// exception thrown
-				log.error( "++++ exception thrown while writing bytes to server on stats" );
-				log.error( e.getMessage(), e );
+				log.error("Exception thrown while writing bytes to server on stats", e);
 
 				try {
 					sock.trueClose();
-				}
-				catch ( IOException ioe ) {
-					log.error( "++++ failed to close socket : " + sock.toString() );
+				} catch (IOException ioe) {
+					log.error("Failed to close socket: " + sock);
 				}
 
 				sock = null;
 			}
 
-			if ( sock != null ) {
+			if (sock != null) {
 				sock.close();
+				
 				sock = null;
 			}
 		}
 
 		return statsMaps;
 	}
-
+	
+	public void shutdown() {
+	    if (log.isInfoEnabled()) {
+	        log.info("Shutdown memcached client");
+	    }
+        
+	    JMXHelper.unregisterClient(this);
+	    
+	    pool.decReferenceCounter();
+	    
+	    if (pool.getReferenceCounter() == 0) {
+	        pool.shutDown();
+	    }
+	}
+	
 	protected final class NIOLoader {
 		protected Selector selector;
 		protected int numConns = 0;
@@ -1916,7 +1964,9 @@ public class MemCachedClient {
 			private boolean isDone = false;
 
 			public Connection( SockIOPool.SockIO sock, StringBuilder request ) throws IOException {
-				log.debug( "setting up connection to "+sock.getHost() );
+                if (log.isDebugEnabled()) {
+                    log.debug("Setting up connection to " + sock.getHost());
+                }
 
 				this.sock = sock;
 				outgoing = ByteBuffer.wrap( request.append( "\r\n" ).toString().getBytes() );
@@ -1930,9 +1980,10 @@ public class MemCachedClient {
 				try {
 					if ( isDone ) {
 						// turn off non-blocking IO and return to pool
-						if ( log.isDebugEnabled() )
-							log.debug( "++++ gracefully closing connection to "+sock.getHost() );
-
+						if (log.isDebugEnabled()) {
+							log.debug("Gracefully closing connection to " + sock.getHost());
+						}
+						
 						channel.configureBlocking( true );
 						sock.close();
 						return;
@@ -1943,13 +1994,13 @@ public class MemCachedClient {
 				}
 
 				try {
-					if ( log.isDebugEnabled() )
+					if (log.isDebugEnabled()) {
 						log.debug("forcefully closing connection to "+sock.getHost());
-
+					}
+					
 					channel.close();
 					sock.trueClose();
-				}
-				catch ( IOException ignoreMe ) { }
+				} catch ( IOException ignoreMe ) { }
 			}
 
 			public boolean isDone() {
@@ -2045,9 +2096,10 @@ public class MemCachedClient {
 				handleError( e, keys );
 				return;
 			} finally {
-				if ( log.isDebugEnabled() )
-					log.debug( "Disconnecting; numConns=" + numConns + "  timeRemaining=" + timeRemaining );
-
+				if (log.isDebugEnabled()) {
+					log.debug("Disconnecting; numConns=" + numConns + "  timeRemaining=" + timeRemaining);
+				}
+				
 				// run through our conns and either return them to the pool
 				// or forcibly close them
 				try {

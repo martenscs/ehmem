@@ -42,9 +42,7 @@ public class MemcachedCacheProvider implements CacheProvider {
     public void stop() {
         log.info("Stop memcached provider");
         
-        if ((client != null) && (client.getPool() != null)) {
-            client.getPool().shutDown();
-        }
+        client.shutdown();
     }
 
     /* (non-Javadoc)
