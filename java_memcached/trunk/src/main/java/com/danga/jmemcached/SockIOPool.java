@@ -202,7 +202,9 @@ public class SockIOPool {
 
 	// locks
 	private final ReentrantLock hostDeadLock = new ReentrantLock();
-
+	
+	private String name;
+	
 	// list of all servers
 	private String[] servers;
 	private Integer[] weights;
@@ -245,11 +247,13 @@ public class SockIOPool {
 
 		SockIOPool pool = new SockIOPool();
 		Document doc = loadConfiguration();
-
+		
+		pool.name = poolName;
+		
 		if (doc != null) {
 		    initPool(pool, new PoolConfigurationWrapper(doc, poolName));
 		}
-
+		
 		pools.put(poolName, pool);
 
 		return pool;
@@ -1503,7 +1507,7 @@ public class SockIOPool {
     }
 
 	protected static void initPool(SockIOPool pool, PoolConfigurationWrapper wrapper) {
-	    final String prefix = "SockIOPool [" + wrapper.getPoolName() + "]: ";
+	    final String prefix = "SockIOPool [" + pool.getName() + "]: ";
 	    
 	    final String[] s = wrapper.getServers();
         final Integer[] w = wrapper.getWeights();
@@ -1600,6 +1604,37 @@ public class SockIOPool {
 	    return referenceCounter.get();
 	}
 
+    /**
+     * @return the name
+     */
+    public String getName() {
+        return name;
+    }
+	
+    public int getAvailableSockets(String server) {
+        return getQueueSize(availableSockets, server);
+    }
+
+    public int getBusySockets(String server) {
+        return getQueueSize(busySockets, server);
+    }
+
+    public int getDeadSockets(String server) {
+        return deadSockets.size();
+    }
+
+    private int getQueueSize(Map<String, Queue<SockIO>> pool, String server) {
+        if (pool.containsKey(server)) {
+            final Queue<SockIO> queue = pool.get(server);
+            
+            if (queue != null) {
+                return queue.size();
+            }
+        }
+        
+        return (-1);
+    }
+
 	/**
 	 * Class which extends thread and handles maintenance of the pool.
 	 *
@@ -1657,6 +1692,7 @@ public class SockIOPool {
 		}
 	}
 
+	
 	/**
 	 * MemCached Java client, utility class for Socket IO.
 	 *

@@ -35,14 +35,12 @@ public class PoolConfigurationWrapper {
 
     private Document document;
     private String prefix;
-    private String poolName;
 
     private Map<String, Integer> servers;
     
     public PoolConfigurationWrapper(Document document, String poolName) {
         this.document = document;
         this.prefix = "/memcached/pool[@name=\"" + poolName + "\"]/";
-        this.poolName = poolName;
     }
 
     public synchronized String[] getServers() {
@@ -93,13 +91,6 @@ public class PoolConfigurationWrapper {
         Node node = (Node) evalute("parameters/parameter[@name=\"" + parameter + "\"]/@value", XPathConstants.NODE);
 
         return (node != null);
-    }
-    
-    /**
-     * @return the poolName
-     */
-    public String getPoolName() {
-        return poolName;
     }
 
     protected void loadServerList() {
